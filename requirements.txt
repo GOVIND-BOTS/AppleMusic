@@ -1,0 +1,9 @@
+pyrogram
+telethon
+tgcrypto
+yt-dlp
+spotipy
+pytgcalls
+aiohttp
+ffmpeg
+python-dotenv
