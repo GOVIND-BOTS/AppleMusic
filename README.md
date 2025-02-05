@@ -9,7 +9,14 @@ Stream **YouTube, Spotify, Apple Music**, and more directly in **Telegram Voice 
 ![Python Version](https://img.shields.io/badge/Python-3.9-blue)  
 ![Koyeb Deployment](https://img.shields.io/badge/Deploy-Koyeb-orange)  
 
----
+
+     
+---# 🚀 Deploy to Heroku  
+
+Click the button below to deploy this bot to Heroku instantly!  
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/GOVIND-BOTS/AppleMusic)  
+
 
 ## 🎧 **Features**
 ✅ **YouTube Audio/Video Support**  
