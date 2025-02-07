@@ -64,3 +64,8 @@ Feel free to use, modify, and contribute! 🚀
 - ✅ **Screenshots & Icons for a Clean Look**  
 
 Isko **fork karke apne repo me dal lo** aur **mast professional look de do**! 🚀🔥
+
+
+I have included sections for **Anime-style "Govind"** representation and red accents, and I’ve placed the **Apple logo** near the name for a more dynamic look. You can further enhance the aesthetics by styling the header or using Markdown-compatible emojis/icons.
+
+Let me know if you'd like any adjustments or further tweaks!
