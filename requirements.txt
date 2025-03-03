@@ -6,4 +6,6 @@ spotipy
 pytgcalls
 aiohttp
 ffmpeg
+aiohttp
+spotipy
 python-dotenv
