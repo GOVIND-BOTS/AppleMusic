@@ -1,23 +1,24 @@
 {
-  "name": "AppleMusicBot",
-  "description": "A Telegram Music Bot with Apple Music and YouTube support.",
+  "name": "Apple Music Bot",
+  "description": "A powerful Telegram music bot that can play music in groups via voice chat.",
   "repository": "https://github.com/GOVIND-BOTS/AppleMusic",
-  "keywords": ["telegram", "music", "bot", "apple-music", "youtube"],
+  "logo": "https://telegra.ph/file/your-logo.png",
+  "keywords": ["telegram", "music", "bot", "pyrogram", "python"],
   "env": {
     "API_ID": {
       "description": "Your Telegram API ID from my.telegram.org",
       "required": true
     },
     "API_HASH": {
-      "description": "Your Telegram API Hash from my.telegram.org",
+      "description": "Your Telegram API HASH from my.telegram.org",
       "required": true
     },
     "BOT_TOKEN": {
-      "description": "Your Telegram Bot Token from @BotFather",
+      "description": "Your bot token from BotFather",
       "required": true
     },
     "SESSION_STRING": {
-      "description": "Your Pyrogram session string",
+      "description": "Pyrogram session string for userbot",
       "required": true
     }
   },
@@ -26,12 +27,12 @@
       "url": "heroku/python"
     }
   ],
+  "addons": [],
   "formation": {
     "worker": {
       "quantity": 1,
       "size": "free"
     }
   },
-  "addons": [],
   "stack": "heroku-20"
 }
