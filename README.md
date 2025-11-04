@@ -6,7 +6,7 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=50&duration=4000&pause=1000&color=F71C1C&center=true&vCenter=true&width=1000&height=80&lines=🍏+AppleMusic+Telegram+Bot+🎶" alt="AppleMusic animation" />
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3500&pause=900&color=111827&center=true&vCenter=true&width=800&height=40&lines=By+Govind+%2B+ChatGPT" alt="By Govind + ChatGPT" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3500&pause=900&color=111827&center=true&vCenter=true&width=800&height=40&lines=By+Govind+%2B+ChatGPT" alt="By Govind + 🖤🖤" />
 
 ---
 
@@ -117,7 +117,7 @@ _Add screenshots of your bot UI or voice chat experience here._
 
 ## 🧠 Credits
 
-> 💡 Developed by **Govind × ChatGPT**  
+> 💡 Developed by **Govind × 🖤🖤🖤**  
 > 💥 Under the **GOVIND-BOTS** organization  
 > ⚙️ Powered by **Pyrogram** & **Python 3.10+**
 
@@ -132,7 +132,7 @@ You are free to use, modify, and distribute with credit.
 
 <div align="center">
   
-### 🎧 Made with ❤️ by <b>Govind</b> × <b>ChatGPT</b>  
+### 🎧 Made with ❤️ by <b>Govind</b> × <b>😻😻</b>  
 ⭐ Star the repo if you like it! ⭐
 
 </div>
