@@ -6,7 +6,7 @@
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=50&duration=4000&pause=1000&color=F71C1C&center=true&vCenter=true&width=1000&height=80&lines=🍏+AppleMusic+Telegram+Bot+🎶" alt="AppleMusic animation" />
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3500&pause=900&color=111827&center=true&vCenter=true&width=800&height=40&lines=By+Govind+%2B+ChatGPT" alt="By Govind + 🖤🖤" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3500&pause=900&color=111827&center=true&vCenter=true&width=800&height=40&lines=By+Govind+%2B+❤️‍🩹❤️‍🩹" alt="By Govind + 🖤🖤" />
 
 ---
 
@@ -20,7 +20,7 @@
 ---
 
 > **AppleMusic** is a polished Telegram music bot that streams and plays music from YouTube, Spotify, and Apple Music directly in Telegram voice chats.  
-> Built with ❤️ by **Govind × ChatGPT** under **GOVIND-BOTS**.
+> Built with ❤️ by **Govind × ❤️‍🩹❤️‍🩹** under **GOVIND-BOTS**.
 
 ---
 
