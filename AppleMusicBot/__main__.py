@@ -3,10 +3,10 @@ import importlib
 
 from pyrogram import idle
 
-from AppleMusic import LOGGER, app, userbot
-from AppleMusic.core.call import Apple
-from AppleMusic.misc import sudo
-from AppleMusic.plugins import ALL_MODULES
+from AppleMusicBot import LOGGER, app, userbot
+from AppleMusicBot.core.call import Apple
+from AppleMusicBot.misc import sudo
+from AppleMusicBot.plugins import ALL_MODULES
 from config import OWNER_ID
 
 
