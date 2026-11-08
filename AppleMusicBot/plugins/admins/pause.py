@@ -1,17 +1,21 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from AppleMusicBot import app, userbot
-from AppleMusicBot.core.call import Apple as AppleVC
-from AppleMusicBot.utils.decorators.admins import AdminRightsCheck
+from AppleMusicBot import app
+from AppleMusicBot.core.call import Anony
+from AppleMusicBot.utils.database import is_music_playing, music_off
+from AppleMusicBot.utils.decorators import AdminRightsCheck
+from AppleMusicBot.utils.inline import close_markup
 from config import BANNED_USERS
 
 
 @app.on_message(filters.command(["pause", "cpause"]) & filters.group & ~BANNED_USERS)
 @AdminRightsCheck
-async def pause_cmd(_, message: Message):
-    try:
-        await AppleVC.pause(userbot.assistants[0], message.chat.id)
-        await message.reply_text(f"⏸ Paused by {message.from_user.mention}")
-    except Exception as e:
-        await message.reply_text(f"Failed: `{e}`")
+async def pause_admin(cli, message: Message, _, chat_id):
+    if not await is_music_playing(chat_id):
+        return await message.reply_text(_["admin_1"])
+    await music_off(chat_id)
+    await Anony.pause_stream(chat_id)
+    await message.reply_text(
+        _["admin_2"].format(message.from_user.mention), reply_markup=close_markup(_)
+    )
