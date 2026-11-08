@@ -5,15 +5,15 @@ from typing import Union
 from pyrogram.types import InlineKeyboardMarkup
 
 import config
-from AppleMusic import Carbon, YouTube, app
-from AppleMusic.core.call import Anony
-from AppleMusic.misc import db
-from AppleMusic.utils.database import add_active_video_chat, is_active_chat
-from AppleMusic.utils.exceptions import AssistantErr
-from AppleMusic.utils.inline import aq_markup, close_markup, stream_markup
-from AppleMusic.utils.pastebin import AnonyBin
-from AppleMusic.utils.stream.queue import put_queue, put_queue_index
-from AppleMusic.utils.thumbnails import get_thumb
+from AppleMusicBot import Carbon, YouTube, app
+from AppleMusicBot.core.call import Anony
+from AppleMusicBot.misc import db
+from AppleMusicBot.utils.database import add_active_video_chat, is_active_chat
+from AppleMusicBot.utils.exceptions import AssistantErr
+from AppleMusicBot.utils.inline import aq_markup, close_markup, stream_markup
+from AppleMusicBot.utils.pastebin import AnonyBin
+from AppleMusicBot.utils.stream.queue import put_queue, put_queue_index
+from AppleMusicBot.utils.thumbnails import get_thumb
 
 
 async def stream(
