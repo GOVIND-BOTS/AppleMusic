@@ -4,7 +4,7 @@ from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import Message
 
 from config import OWNER_ID
-from AppleMusic import app
+from AppleMusicBot import app
 
 
 def AdminRightsCheck(mystic):
