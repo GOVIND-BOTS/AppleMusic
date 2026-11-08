@@ -1,2 +1,2 @@
-from .admins import AdminRightsCheck
-from .play import PlayWrapper
+from .admins import *
+from .language import *
