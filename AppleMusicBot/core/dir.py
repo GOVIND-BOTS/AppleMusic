@@ -1,6 +1,6 @@
 import os
 
-from AppleMusic.logging import LOGGER
+from AppleMusicBot.logging import LOGGER
 
 
 def dirr():
