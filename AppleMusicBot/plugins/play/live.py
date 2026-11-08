@@ -1,9 +1,9 @@
 from pyrogram import filters
 
-from AppleMusic import YouTube, app
-from AppleMusic.utils.channelplay import get_channeplayCB
-from AppleMusic.utils.decorators.language import languageCB
-from AppleMusic.utils.stream.stream import stream
+from AppleMusicBot import YouTube, app
+from AppleMusicBot.utils.channelplay import get_channeplayCB
+from AppleMusicBot.utils.decorators.language import languageCB
+from AppleMusicBot.utils.stream.stream import stream
 from config import BANNED_USERS
 
 
