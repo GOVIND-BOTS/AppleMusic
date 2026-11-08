@@ -1,8 +1,8 @@
 import random
 from typing import Dict, List, Union
 
-from AppleMusic import userbot
-from AppleMusic.core.mongo import mongodb
+from AppleMusicBot import userbot
+from AppleMusicBot.core.mongo import mongodb
 
 authdb = mongodb.adminauth
 authuserdb = mongodb.authuser
