@@ -1,7 +1,7 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from AppleMusic import app
+from AppleMusicBot import app
 from config import BANNED_USERS, BOT_NAME
 
 
