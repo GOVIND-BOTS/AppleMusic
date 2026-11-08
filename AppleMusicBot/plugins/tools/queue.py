@@ -1,8 +1,8 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from AppleMusic import app
-from AppleMusic.misc import db
+from AppleMusicBot import app
+from AppleMusicBot.misc import db
 from config import BANNED_USERS
 
 
