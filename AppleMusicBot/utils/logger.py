@@ -1,7 +1,7 @@
 from pyrogram.enums import ParseMode
 
-from AppleMusic import app
-from AppleMusic.utils.database import is_on_off
+from AppleMusicBot import app
+from AppleMusicBot.utils.database import is_on_off
 from config import LOGGER_ID
 
 
