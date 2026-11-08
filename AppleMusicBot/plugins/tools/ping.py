@@ -3,9 +3,9 @@ import time
 from pyrogram import filters
 from pyrogram.types import Message
 
-from AppleMusic import app
-from AppleMusic.misc import START_TIME
-from AppleMusic.utils.formatters import get_readable_time
+from AppleMusicBot import app
+from AppleMusicBot.misc import START_TIME
+from AppleMusicBot.utils.formatters import get_readable_time
 from config import BANNED_USERS
 
 
