@@ -1,18 +1,21 @@
 from pyrogram import Client, errors
-from pyrogram.enums import ChatMemberStatus
+from pyrogram.enums import ChatMemberStatus, ParseMode
 
 import config
-from AppleMusicBot.logging import LOGGER
+
+from ..logging import LOGGER
 
 
-class AppleBot(Client):
+class Anony(Client):
     def __init__(self):
+        LOGGER(__name__).info(f"Starting Bot...")
         super().__init__(
-            name="AppleMusic",
+            name="AppleMusicBot",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             bot_token=config.BOT_TOKEN,
             in_memory=True,
+            parse_mode=ParseMode.HTML,
             max_concurrent_transmissions=7,
         )
 
@@ -22,20 +25,30 @@ class AppleBot(Client):
         self.name = self.me.first_name + " " + (self.me.last_name or "")
         self.username = self.me.username
         self.mention = self.me.mention
+
         try:
             await self.send_message(
-                config.LOGGER_ID,
-                f"**{config.BOT_NAME} bot started.**\nID: `{self.id}`",
+                chat_id=config.LOGGER_ID,
+                text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
             )
-        except Exception:
-            LOGGER(__name__).warning("Logger chat not reachable. Check LOGGER_ID.")
-        if config.LOGGER_ID:
-            try:
-                chat = await self.get_chat(config.LOGGER_ID)
-                LOGGER(__name__).info(f"Logger chat: {chat.title or chat.id}")
-            except Exception:
-                pass
-        LOGGER(__name__).info(f"Bot started as {self.name} (@{self.username})")
+        except (errors.ChannelInvalid, errors.PeerIdInvalid):
+            LOGGER(__name__).error(
+                "Bot has failed to access the log group/channel. Make sure that you have added your bot to your log group/channel."
+            )
+            exit()
+        except Exception as ex:
+            LOGGER(__name__).error(
+                f"Bot has failed to access the log group/channel.\n  Reason : {type(ex).__name__}."
+            )
+            exit()
+
+        a = await self.get_chat_member(config.LOGGER_ID, self.id)
+        if a.status != ChatMemberStatus.ADMINISTRATOR:
+            LOGGER(__name__).error(
+                "Please promote your bot as an admin in your log group/channel."
+            )
+            exit()
+        LOGGER(__name__).info(f"Music Bot Started as {self.name}")
 
     async def stop(self):
         await super().stop()
