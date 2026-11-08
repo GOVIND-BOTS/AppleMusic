@@ -1,5 +1,5 @@
-from AppleMusic import app
-from AppleMusic.utils.database import get_cmode
+from AppleMusicBot import app
+from AppleMusicBot.utils.database import get_cmode
 
 
 async def get_channeplayCB(_, command, CallbackQuery):
