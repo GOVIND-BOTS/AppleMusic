@@ -1,9 +1,9 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from AppleMusicbot import app, userbot
-from AppleMusicbot.core.call import Apple as AppleVC
-from AppleMusicbot.utils.decorators.admins import AdminRightsCheck
+from AppleMusicBot import app, userbot
+from AppleMusicBot.core.call import Apple as AppleVC
+from AppleMusicBot.utils.decorators.admins import AdminRightsCheck
 from config import BANNED_USERS
 
 
