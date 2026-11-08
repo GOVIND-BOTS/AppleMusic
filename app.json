@@ -1,25 +1,73 @@
 {
-  "name": "Apple Music Bot",
-  "description": "Superfast multi-platform Telegram music bot by GOVIND-BOTS",
-  "logo": "https://graph.org/file/e47d7251464ca14a7f576.jpg",
-  "keywords": ["telegram", "music", "bot", "pyrogram", "apple-music"],
-  "repository": "https://github.com/GOVIND-BOTS/AppleMusic",
-  "stack": "container",
-  "env": {
-    "API_ID": {"description": "from my.telegram.org", "required": true},
-    "API_HASH": {"description": "from my.telegram.org", "required": true},
-    "BOT_TOKEN": {"description": "from @BotFather", "required": true},
-    "STRING_SESSION": {"description": "Pyrogram v2 string session (assistant)", "required": true},
-    "MONGO_DB_URI": {"description": "MongoDB URL", "required": true},
-    "OWNER_ID": {"description": "Your Telegram user id", "required": true},
-    "LOGGER_ID": {"description": "Log group/channel id", "required": false},
-    "SPOTIFY_CLIENT_ID": {"description": "Optional Spotify client id", "required": false},
-    "SPOTIFY_CLIENT_SECRET": {"description": "Optional Spotify client secret", "required": false},
-    "BOT_NAME": {"description": "Bot display name", "value": "Apple Music", "required": false},
-    "SUPPORT_CHAT": {"value": "https://t.me/GOVIND_BOTS", "required": false},
-    "SUPPORT_CHANNEL": {"value": "https://t.me/GOVIND_MP_USERBOT_SPPORT", "required": false}
-  },
-  "formation": {
-    "worker": {"quantity": 1, "size": "basic"}
+    "name": " ──「 𝙎𝙖𝙣𝙖𝙩𝙖𝙣𝙞 ✘ 𝙈𝙪𝙨𝙞𝙘 」── ",
+    "description": "A Telegram Music Player Bot, written in Python with Pyrogram and Py-Tgcalls.",
+    "logo": "https://graph.org/file/e47d7251464ca14a7f576.jpg",
+    "keywords": [
+    "python3",
+    "telegram",
+    "bot",
+    "AppleMusic",
+    "MusicBot",
+    "telegram-bot",
+    "pyrogram"
+    ],
+    "env": {
+      "API_ID": {
+        "description": "Get this value from https://my.telegram.org",
+        "value": "",
+        "required": true
+      },
+      "API_HASH": {
+        "description": "Get this value from https://my.telegram.org",
+        "value": "",
+        "required": true
+      },
+      "BOT_TOKEN": {
+        "description": "A Bot's token from Botfather",
+        "value": "",
+        "required": true
+      },
+      "MONGO_DB_URI": {
+        "description": "Get a mongodb url from https://cloud.mongodb.com.",
+        "value": "",
+        "required": true
+      },
+      "OWNER_ID": {
+        "description": "The user id of user whom you would like to add as OWNER.",
+        "value": "",
+        "required": true
+      },
+      "STRING_SESSION": {
+        "description": "A Pyrogram v2 String Session from @StringFatherBot on Telegram.",
+        "value": "",
+        "required": true
+      },
+      "HEROKU_API_KEY": {
+        "description": "Your Heroku account's API key",
+        "value": "",
+        "required": false
+      },
+      "HEROKU_APP_NAME": {
+        "description": "Your heroku app name",
+        "value": "",
+        "required": false
+      },
+      "LOGGER_ID": {
+        "description": "Your Log Group ID, add your bot and promote as an admin with full rights!. Channel ki id mat daal dena bsdk.",
+        "value": "",
+        "required": true
+      }
+    },
+    "buildpacks": [
+          {
+              "url": "heroku/python"
+          },
+          {
+              "url": "heroku/nodejs"
+          },
+          {
+              "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
+          }
+      ],
+      "stack": "container"
   }
-}
