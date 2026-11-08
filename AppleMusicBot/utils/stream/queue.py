@@ -1,110 +1,91 @@
-
 import asyncio
+from typing import Union
 
-from AppleMusicBot.misc import db
-
-_queue_locks = {}
-
-
-def get_queue_lock(chat_id: int):
-    if chat_id not in _queue_locks:
-        _queue_locks[chat_id] = asyncio.Lock()
-    return _queue_locks[chat_id]
+from AppleMusic.misc import db
+from AppleMusic.utils.formatters import check_duration, seconds_to_min
+from config import autoclean, time_to_seconds
 
 
 async def put_queue(
-    chat_id: int,
-    title: str,
-    duration: str,
-    path: str,
-    user: str,
-    stream_type: str = "audio",
-    videoid: str = "",
-    **kwargs,
+    chat_id,
+    original_chat_id,
+    file,
+    title,
+    duration,
+    user,
+    vidid,
+    user_id,
+    stream,
+    forceplay: Union[bool, str] = None,
 ):
-    track = {
+    title = title.title()
+    try:
+        duration_in_seconds = time_to_seconds(duration) - 3
+    except:
+        duration_in_seconds = 0
+    put = {
         "title": title,
-        "duration": duration,
-        "path": path,
-        "user": user,
-        "stream_type": stream_type,
-        "videoid": videoid,
+        "dur": duration,
+        "streamtype": stream,
+        "by": user,
+        "user_id": user_id,
+        "chat_id": original_chat_id,
+        "file": file,
+        "vidid": vidid,
+        "seconds": duration_in_seconds,
+        "played": 0,
     }
-
-    async with get_queue_lock(chat_id):
-        if chat_id not in db:
-            db[chat_id] = []
-
-        db[chat_id].append(track)
-        return len(db[chat_id]) - 1
-
-
-async def clear_queue(chat_id: int):
-    async with get_queue_lock(chat_id):
-        db[chat_id] = []
-
-
-def get_queue(chat_id: int):
-    return db.get(chat_id, [])
-
-
-def get_current_track(chat_id: int):
-    queue = db.get(chat_id, [])
-    return queue[0] if queue else None
-
-
-async def pop_current(chat_id: int):
-    async with get_queue_lock(chat_id):
-        queue = db.get(chat_id, [])
-
-        if not queue:
-            return None
-
-        return queue.pop(0)
-
-
-async def get_next_track(chat_id: int):
-    async with get_queue_lock(chat_id):
-        queue = db.get(chat_id, [])
-
-        if len(queue) < 2:
-            return None
-
-        return queue[1]
-
-
-async def remove_track(chat_id: int, index: int):
-    async with get_queue_lock(chat_id):
-        queue = db.get(chat_id, [])
-
-        if index < 0 or index >= len(queue):
-            return None
-
-        return queue.pop(index)
-
-
-async def remove_last_queue(chat_id: int):
-    async with get_queue_lock(chat_id):
-        queue = db.get(chat_id, [])
-
-        if not queue:
-            return None
-
-        return queue.pop()
-
-
-async def replace_current(chat_id: int, track: dict):
-    async with get_queue_lock(chat_id):
-        if chat_id not in db:
-            db[chat_id] = []
-
-        if db[chat_id]:
-            db[chat_id][0] = track
+    if forceplay:
+        check = db.get(chat_id)
+        if check:
+            check.insert(0, put)
         else:
-            db[chat_id].append(track)
+            db[chat_id] = []
+            db[chat_id].append(put)
+    else:
+        db[chat_id].append(put)
+    autoclean.append(file)
 
-        return track
 
-
-def queue_length(chat_id: int):
-    return len(db.get(chat_id, []))
+async def put_queue_index(
+    chat_id,
+    original_chat_id,
+    file,
+    title,
+    duration,
+    user,
+    vidid,
+    stream,
+    forceplay: Union[bool, str] = None,
+):
+    if "20.212.146.162" in vidid:
+        try:
+            dur = await asyncio.get_event_loop().run_in_executor(
+                None, check_duration, vidid
+            )
+            duration = seconds_to_min(dur)
+        except:
+            duration = "ᴜʀʟ sᴛʀᴇᴀᴍ"
+            dur = 0
+    else:
+        dur = 0
+    put = {
+        "title": title,
+        "dur": duration,
+        "streamtype": stream,
+        "by": user,
+        "chat_id": original_chat_id,
+        "file": file,
+        "vidid": vidid,
+        "seconds": dur,
+        "played": 0,
+    }
+    if forceplay:
+        check = db.get(chat_id)
+        if check:
+            check.insert(0, put)
+        else:
+            db[chat_id] = []
+            db[chat_id].append(put)
+    else:
+        db[chat_id].append(put)
