@@ -1,36 +1,70 @@
+
 from pyrogram import filters
 from pyrogram.types import Message
 
 from AppleMusicBot import app, userbot
 from AppleMusicBot.core.call import Apple as AppleVC
-from AppleMusicBot.misc import db
 from AppleMusicBot.utils.decorators.admins import AdminRightsCheck
-from AppleMusicBot.utils.stream.queue import clear_queue
+from AppleMusicBot.utils.stream.queue import (
+    clear_queue,
+    get_current_track,
+    pop_current,
+)
 from config import BANNED_USERS
 
 
-@app.on_message(filters.command(["skip", "cskip", "next"]) & filters.group & ~BANNED_USERS)
+@app.on_message(
+    filters.command(["skip", "cskip", "next"])
+    & filters.group
+    & ~BANNED_USERS
+)
 @AdminRightsCheck
 async def skip_cmd(_, message: Message):
     chat_id = message.chat.id
-    q = db.get(chat_id) or []
+
+    if not userbot.assistants:
+        return await message.reply_text(
+            "❌ No assistant is available."
+        )
+
     assistant = userbot.assistants[0]
+    status = await message.reply_text("⏭ **Skipping current track...**")
+
     try:
-        if len(q) <= 1:
+        await pop_current(chat_id)
+        next_track = get_current_track(chat_id)
+
+        if not next_track:
             await AppleVC.leave(assistant, chat_id)
             await clear_queue(chat_id)
-            return await message.reply_text("Queue finished. Left VC.")
-        q.pop(0)
-        nxt = q[0]
+
+            return await status.edit_text(
+                "⏹ **Queue finished.**\n"
+                "Left the voice chat."
+            )
+
         await AppleVC.change_stream(
             assistant,
             chat_id,
-            nxt["path"],
-            video=nxt.get("stream_type") == "video",
+            next_track["path"],
+            video=next_track.get("stream_type") == "video",
         )
-        await message.reply_text(
-            f"⏭ Skipped by {message.from_user.mention}\n"
-            f"▶ **Now:** {nxt['title']}"
+
+        name = (
+            message.from_user.mention
+            if message.from_user
+            else "Admin"
         )
+
+        await status.edit_text(
+            f"⏭ **Skipped by:** {name}\n\n"
+            f"▶️ **Now Playing:** {next_track['title']}"
+        )
+
     except Exception as e:
-        await message.reply_text(f"Failed: `{e}`")
+        await AppleVC.leave(assistant, chat_id)
+        await clear_queue(chat_id)
+
+        await status.edit_text(
+            f"❌ **Skip failed.**\n\n`{e}`"
+        )
