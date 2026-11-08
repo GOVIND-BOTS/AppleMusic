@@ -1,4 +1,4 @@
-from AppleMusic.misc import db
+from AppleMusicBot.misc import db
 
 
 async def put_queue(
