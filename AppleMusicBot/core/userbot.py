@@ -1,7 +1,7 @@
 from pyrogram import Client
 
 import config
-from AppleMusic.logging import LOGGER
+from AppleMusicBot.logging import LOGGER
 
 
 class Userbot(Client):
