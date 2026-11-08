@@ -3,7 +3,7 @@ from functools import wraps
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import Message
 
-from AppleMusic import app
+from AppleMusicBot import app
 
 
 def PlayWrapper(mystic):
