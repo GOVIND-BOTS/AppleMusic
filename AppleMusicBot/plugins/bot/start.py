@@ -2,7 +2,7 @@ from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import config
-from AppleMusic import app
+from AppleMusicBot import app
 from config import BANNED_USERS
 
 
