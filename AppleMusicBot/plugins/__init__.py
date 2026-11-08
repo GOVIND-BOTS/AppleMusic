@@ -7,7 +7,7 @@ def __list_all_modules():
     mod_paths = glob.glob(work_dir + "/**/*.py", recursive=True)
     all_modules = [
         (
-            f.replace(work_dir, "AppleMusic.plugins")
+            f.replace(work_dir, "AppleMusicBot.plugins")
             .replace("/", ".")
             .replace("\\", ".")
             .replace(".py", "")
