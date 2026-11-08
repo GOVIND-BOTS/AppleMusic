@@ -54,7 +54,7 @@ async def init():
     )
     await idle()
     await app.stop()
-    LOGGER("AppleMusicBot").info("Stopping AnonX Music Bot...")
+    LOGGER("AppleMusicBot").info("Stopping AppleMusic Bot...")
 
 
 if __name__ == "__main__":
