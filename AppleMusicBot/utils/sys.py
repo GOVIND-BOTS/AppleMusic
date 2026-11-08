@@ -2,8 +2,8 @@ import time
 
 import psutil
 
-from AppleMusic.misc import _boot_
-from AppleMusic.utils.formatters import get_readable_time
+from AppleMusicBot.misc import _boot_
+from AppleMusicBot.utils.formatters import get_readable_time
 
 
 async def bot_sys_stats():
