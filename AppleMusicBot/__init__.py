@@ -1,7 +1,7 @@
-from AppleMusic.core.bot import AppleBot
-from AppleMusic.core.dir import dirr
-from AppleMusic.core.userbot import Userbot
-from AppleMusic.misc import db, sudo
+from AppleMusicBot.core.bot import AppleBot
+from AppleMusicBot.core.dir import dirr
+from AppleMusicBot.core.userbot import Userbot
+from AppleMusicBot.misc import db, sudo
 
 from .logging import LOGGER
 
@@ -10,7 +10,7 @@ dirr()
 app = AppleBot()
 userbot = Userbot()
 
-from AppleMusic.platforms import (
+from AppleMusicBot.platforms import (
     AppleAPI,
     RessoAPI,
     SoundAPI,
