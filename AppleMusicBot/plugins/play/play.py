@@ -8,7 +8,7 @@ from pyrogram.types import (
 )
 
 import config
-from AppleMusic import (
+from AppleMusicBot import (
     Apple,
     Resso,
     SoundCloud,
@@ -18,10 +18,10 @@ from AppleMusic import (
     app,
     userbot,
 )
-from AppleMusic.core.call import Apple as AppleVC
-from AppleMusic.misc import db
-from AppleMusic.utils.decorators.play import PlayWrapper
-from AppleMusic.utils.stream.queue import put_queue
+from AppleMusicBot.core.call import Apple as AppleVC
+from AppleMusicBot.misc import db
+from AppleMusicBot.utils.decorators.play import PlayWrapper
+from AppleMusicBot.utils.stream.queue import put_queue
 from config import BANNED_USERS
 
 
