@@ -15,8 +15,8 @@ from pytgcalls.types.input_stream.quality import (
     MediumQualityVideo,
 )
 
-from AppleMusic.logging import LOGGER
-from AppleMusic.misc import db
+from AppleMusicBot.logging import LOGGER
+from AppleMusicBot.misc import db
 
 
 class AppleCall:
