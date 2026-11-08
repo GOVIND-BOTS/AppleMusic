@@ -1,8 +1,8 @@
 import asyncio
 from typing import Union
 
-from AppleMusic.misc import db
-from AppleMusic.utils.formatters import check_duration, seconds_to_min
+from AppleMusicBot.misc import db
+from AppleMusicBot.utils.formatters import check_duration, seconds_to_min
 from config import autoclean, time_to_seconds
 
 
