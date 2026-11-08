@@ -23,7 +23,7 @@ async def init():
     await userbot.start()
     await Apple.start(userbot.assistants)
 
-    LOGGER(__name__).info("AppleMusic bot is running.")
+    LOGGER(__name__).info("AppleMusicBot  is running.")
     await idle()
 
     await app.stop()
