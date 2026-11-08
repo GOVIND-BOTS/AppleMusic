@@ -1,10 +1,10 @@
 from pyrogram import filters
 from pyrogram.types import Message
 
-from AppleMusic import app, userbot
-from AppleMusic.core.call import Apple as AppleVC
-from AppleMusic.utils.decorators.admins import AdminRightsCheck
-from AppleMusic.utils.stream.queue import clear_queue
+from AppleMusicBot import app, userbot
+from AppleMusicBot.core.call import Apple as AppleVC
+from AppleMusicBot.utils.decorators.admins import AdminRightsCheck
+from AppleMusicBot.utils.stream.queue import clear_queue
 from config import BANNED_USERS
 
 
