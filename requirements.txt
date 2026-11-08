@@ -1,0 +1,17 @@
+pyrogram==2.0.106
+tgcrypto
+py-tgcalls==0.9.7
+python-dotenv
+motor==3.3.2
+aiohttp
+aiofiles
+yt-dlp
+youtube-search-python
+spotipy
+pillow
+psutil
+requests
+pyyaml
+gitpython
+dnspython
+numpy

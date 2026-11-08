@@ -1,0 +1,25 @@
+{
+  "name": "Apple Music Bot",
+  "description": "Superfast multi-platform Telegram music bot by GOVIND-BOTS",
+  "logo": "https://graph.org/file/e47d7251464ca14a7f576.jpg",
+  "keywords": ["telegram", "music", "bot", "pyrogram", "apple-music"],
+  "repository": "https://github.com/GOVIND-BOTS/AppleMusic",
+  "stack": "container",
+  "env": {
+    "API_ID": {"description": "from my.telegram.org", "required": true},
+    "API_HASH": {"description": "from my.telegram.org", "required": true},
+    "BOT_TOKEN": {"description": "from @BotFather", "required": true},
+    "STRING_SESSION": {"description": "Pyrogram v2 string session (assistant)", "required": true},
+    "MONGO_DB_URI": {"description": "MongoDB URL", "required": true},
+    "OWNER_ID": {"description": "Your Telegram user id", "required": true},
+    "LOGGER_ID": {"description": "Log group/channel id", "required": false},
+    "SPOTIFY_CLIENT_ID": {"description": "Optional Spotify client id", "required": false},
+    "SPOTIFY_CLIENT_SECRET": {"description": "Optional Spotify client secret", "required": false},
+    "BOT_NAME": {"description": "Bot display name", "value": "Apple Music", "required": false},
+    "SUPPORT_CHAT": {"value": "https://t.me/GOVIND_BOTS", "required": false},
+    "SUPPORT_CHANNEL": {"value": "https://t.me/GOVIND_MP_USERBOT_SPPORT", "required": false}
+  },
+  "formation": {
+    "worker": {"quantity": 1, "size": "basic"}
+  }
+}
