@@ -1,21 +1,28 @@
-import time
+from datetime import datetime
 
 from pyrogram import filters
 from pyrogram.types import Message
 
 from AppleMusicBot import app
-from AppleMusicBot.misc import START_TIME
-from AppleMusicBot.utils.formatters import get_readable_time
-from config import BANNED_USERS
+from AppleMusicBot.core.call import Anony
+from AppleMusicBot.utils import bot_sys_stats
+from AppleMusicBot.utils.decorators.language import language
+from AppleMusicBot.utils.inline import supp_markup
+from config import BANNED_USERS, PING_IMG_URL
 
 
 @app.on_message(filters.command(["ping", "alive"]) & ~BANNED_USERS)
-async def ping(_, message: Message):
-    start = time.time()
-    msg = await message.reply_text("Pinging...")
-    end = time.time()
-    uptime = get_readable_time(int(time.time() - START_TIME))
-    await msg.edit_text(
-        f"**Pong!** `{round((end - start) * 1000)}ms`\n"
-        f"**Uptime:** `{uptime}`"
+@language
+async def ping_com(client, message: Message, _):
+    start = datetime.now()
+    response = await message.reply_photo(
+        photo=PING_IMG_URL,
+        caption=_["ping_1"].format(app.mention),
+    )
+    pytgping = await Anony.ping()
+    UP, CPU, RAM, DISK = await bot_sys_stats()
+    resp = (datetime.now() - start).microseconds / 1000
+    await response.edit_text(
+        _["ping_2"].format(resp, app.mention, UP, RAM, CPU, DISK, pytgping),
+        reply_markup=supp_markup(_),
     )
