@@ -57,7 +57,7 @@ async def auto_end():
                     continue
                 autoend[chat_id] = {}
                 try:
-                    await Anony.stop_stream(chat_id)
+                    await AppleBot.stop_stream(chat_id)
                 except:
                     continue
                 try:
