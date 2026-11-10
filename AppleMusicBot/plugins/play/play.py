@@ -6,22 +6,22 @@ from pyrogram.types import InlineKeyboardMarkup, InputMediaPhoto, Message
 from pytgcalls.exceptions import NoActiveGroupCall
 
 import config
-from AppleMusic import Apple, Resso, SoundCloud, Spotify, Telegram, YouTube, app
+from AppleMusicBot import Apple, Resso, SoundCloud, Spotify, Telegram, YouTube, app
 from AppleMusicBot.core.call import AppleBot
-from AppleMusic.utils import seconds_to_min, time_to_seconds
-from AppleMusic.utils.channelplay import get_channeplayCB
-from AppleMusic.utils.decorators.language import languageCB
-from AppleMusic.utils.decorators.play import PlayWrapper
-from AppleMusic.utils.formatters import formats
-from AppleMusic.utils.inline import (
+from AppleMusicBot.utils import seconds_to_min, time_to_seconds
+from AppleMusicBot.utils.channelplay import get_channeplayCB
+from AppleMusicBot.utils.decorators.language import languageCB
+from AppleMusicBot.utils.decorators.play import PlayWrapper
+from AppleMusicBot.utils.formatters import formats
+from AppleMusicBot.utils.inline import (
     botplaylist_markup,
     livestream_markup,
     playlist_markup,
     slider_markup,
     track_markup,
 )
-from AppleMusic.utils.logger import play_logs
-from AppleMusic.utils.stream.stream import stream
+from AppleMusicBot.utils.logger import play_logs
+from AppleMusicBot.utils.stream.stream import stream
 from config import BANNED_USERS, lyrical
 
 
@@ -288,7 +288,7 @@ async def play_commnd(
             return await mystic.delete()
         else:
             try:
-                await Anony.stream_call(url)
+                await AppleBot.stream_call(url)
             except NoActiveGroupCall:
                 await mystic.edit_text(_["black_9"])
                 return await app.send_message(
