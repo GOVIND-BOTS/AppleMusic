@@ -1,12 +1,22 @@
-FROM nikolaik/python-nodejs:python3.10-nodejs19
+FROM python:3.10-slim-bookworm
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
-    && apt-get clean \
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    git \
+    curl \
+    ca-certificates \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . /app/
-WORKDIR /app/
-RUN pip3 install --no-cache-dir -U -r requirements.txt
+WORKDIR /app
 
-CMD bash start
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -U pip wheel \
+    && pip3 install --no-cache-dir -U -r requirements.txt
+
+COPY . .
+
+CMD ["bash", "start"]
