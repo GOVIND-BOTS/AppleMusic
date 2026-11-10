@@ -4,7 +4,7 @@ from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from AppleMusicBot import YouTube, app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.misc import SUDOERS, db
 from AppleMusicBot.utils.database import (
     get_active_chats,
