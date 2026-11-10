@@ -5,6 +5,7 @@ from pyrogram import idle
 
 import config
 from AppleMusicBot import LOGGER, app, userbot
+from AppleMusicBot.core.call import AppleBot as AppleCall
 from AppleMusicBot.misc import sudo
 from AppleMusicBot.plugins import ALL_MODULES
 from AppleMusicBot.utils.database import get_banned_users, get_gbanned
@@ -34,43 +35,35 @@ async def init():
         users = await get_banned_users()
         for user_id in users:
             BANNED_USERS.add(user_id)
-
     except Exception as e:
         LOGGER(__name__).warning(f"Failed to load banned users: {e}")
 
     await app.start()
-
     LOGGER("AppleMusicBot").info("Bot client started.")
 
     for all_module in ALL_MODULES:
-        importlib.import_module(
-            "AppleMusicBot.plugins." + all_module
-        )
+        # ALL_MODULES already has full path like AppleMusicBot.plugins.xxx
+        if all_module.startswith("AppleMusicBot.plugins"):
+            importlib.import_module(all_module)
+        else:
+            importlib.import_module("AppleMusicBot.plugins." + all_module.lstrip("."))
 
-    LOGGER("AppleMusicBot.plugins").info(
-        "Successfully Imported Modules..."
-    )
+    LOGGER("AppleMusicBot.plugins").info("Successfully Imported Modules...")
 
     await userbot.start()
+    LOGGER("AppleMusicBot").info("Userbot started successfully.")
 
-    LOGGER("AppleMusicBot").info(
-        "Userbot started successfully."
-    )
+    await AppleCall.start()
+    LOGGER("AppleMusicBot").info("PyTgCalls started.")
 
-    LOGGER("AppleMusicBot").info(
-        "AppleMusic Bot Started Successfully."
-    )
+    LOGGER("AppleMusicBot").info("AppleMusic Bot Started Successfully.")
 
     try:
         await idle()
-
     finally:
         await userbot.stop()
         await app.stop()
-
-        LOGGER("AppleMusicBot").info(
-            "AppleMusic Bot Stopped Successfully."
-        )
+        LOGGER("AppleMusicBot").info("AppleMusic Bot Stopped Successfully.")
 
 
 if __name__ == "__main__":
