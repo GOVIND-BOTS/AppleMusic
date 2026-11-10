@@ -2,7 +2,7 @@ from pyrogram import filters
 from pyrogram.types import Message
 
 from AppleMusicBot import YouTube, app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.misc import db
 from AppleMusicBot.utils import AdminRightsCheck, seconds_to_min
 from AppleMusicBot.utils.inline import close_markup
