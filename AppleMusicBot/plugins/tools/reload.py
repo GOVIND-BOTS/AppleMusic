@@ -6,7 +6,7 @@ from pyrogram.enums import ChatMembersFilter
 from pyrogram.types import CallbackQuery, Message
 
 from AppleMusicBot import app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.misc import db
 from AppleMusicBot.utils.database import get_assistant, get_authuser_names, get_cmode
 from AppleMusicBot.utils.decorators import ActualAdminCB, AdminActual, language
