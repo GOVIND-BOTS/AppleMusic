@@ -6,7 +6,7 @@ from pyrogram.types import InlineKeyboardMarkup
 
 import config
 from AppleMusicBot import Carbon, YouTube, app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.misc import db
 from AppleMusicBot.utils.database import add_active_video_chat, is_active_chat
 from AppleMusicBot.utils.exceptions import AssistantErr
