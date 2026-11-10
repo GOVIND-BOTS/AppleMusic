@@ -3,7 +3,7 @@ from datetime import datetime
 
 import config
 from AppleMusicBot import app
-from AppleMusicBot.core.call import Anony, autoend
+from AppleMusicBot.core.call import AppleBot, autoend
 from AppleMusicBot.utils.database import get_client, is_active_chat, is_autoend
 
 
