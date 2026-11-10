@@ -2,7 +2,7 @@ from pyrogram import filters
 from pyrogram.types import Message
 
 from AppleMusicBot import app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.utils.database import is_music_playing, music_on
 from AppleMusicBot.utils.decorators import AdminRightsCheck
 from AppleMusicBot.utils.inline import close_markup
