@@ -3,7 +3,7 @@ from pyrogram.types import InlineKeyboardMarkup, Message
 
 import config
 from AppleMusicBot import YouTube, app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.misc import db
 from AppleMusicBot.utils.database import get_loop
 from AppleMusicBot.utils.decorators import AdminRightsCheck
