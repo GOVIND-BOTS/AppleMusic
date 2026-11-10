@@ -7,7 +7,7 @@ from pytgcalls.exceptions import NoActiveGroupCall
 
 import config
 from AppleMusic import Apple, Resso, SoundCloud, Spotify, Telegram, YouTube, app
-from AppleMusic.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusic.utils import seconds_to_min, time_to_seconds
 from AppleMusic.utils.channelplay import get_channeplayCB
 from AppleMusic.utils.decorators.language import languageCB
