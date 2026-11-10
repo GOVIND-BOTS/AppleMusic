@@ -2,9 +2,9 @@ from pyrogram import filters
 from pyrogram.enums import ChatMembersFilter, ChatMemberStatus, ChatType
 from pyrogram.types import Message
 
-from AppleMusic import app
-from AppleMusic.utils.database import set_cmode
-from AppleMusic.utils.decorators.admins import AdminActual
+from AppleMusicBot import app
+from AppleMusicBot.utils.database import set_cmode
+from AppleMusicBot.utils.decorators.admins import AdminActual
 from config import BANNED_USERS
 
 
