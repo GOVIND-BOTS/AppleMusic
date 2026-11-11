@@ -4,7 +4,7 @@ from pyrogram import filters, types
 from pyrogram.types import InlineKeyboardMarkup, Message
 
 from AppleMusicBot import app
-from AppleMusicBot.utils import help_pannel
+from AppleMusicBot.utils.inline.help import help_pannel
 from AppleMusicBot.utils.database import get_lang
 from AppleMusicBot.utils.decorators.language import LanguageStart, languageCB
 from AppleMusicBot.utils.inline.help import help_back_markup, private_help_panel
