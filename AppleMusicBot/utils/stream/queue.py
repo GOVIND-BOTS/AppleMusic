@@ -43,6 +43,8 @@ async def put_queue(
             db[chat_id] = []
             db[chat_id].append(put)
     else:
+        if chat_id not in db:
+            db[chat_id] = []
         db[chat_id].append(put)
     autoclean.append(file)
 
@@ -88,4 +90,20 @@ async def put_queue_index(
             db[chat_id] = []
             db[chat_id].append(put)
     else:
+        if chat_id not in db:
+            db[chat_id] = []
         db[chat_id].append(put)
+
+
+def get_queue(chat_id):
+    if chat_id in db:
+        return db[chat_id]
+    return []
+
+
+def clear_queue(chat_id):
+    if chat_id in db:
+        try:
+            del db[chat_id]
+        except:
+            pass
