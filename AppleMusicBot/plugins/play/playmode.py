@@ -1,10 +1,10 @@
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, Message
 
-from AppleMusic import app
-from AppleMusic.utils.database import get_playmode, get_playtype, is_nonadmin_chat
-from AppleMusic.utils.decorators import language
-from AppleMusic.utils.inline.settings import playmode_users_markup
+from AppleMusicBot import app
+from AppleMusicBot.utils.database import get_playmode, get_playtype, is_nonadmin_chat
+from AppleMusicBot.utils.decorators import language
+from AppleMusicBot.utils.inline.settings import playmode_users_markup
 from config import BANNED_USERS
 
 
