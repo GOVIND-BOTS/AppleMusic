@@ -1,5 +1,6 @@
-from pyrogram import Client, errors
-from pyrogram.enums import ChatMemberStatus, ParseMode
+
+from pyrogram import Client
+from pyrogram.enums import ParseMode
 
 import config
 
@@ -8,7 +9,8 @@ from ..logging import LOGGER
 
 class AppleBot(Client):
     def __init__(self):
-        LOGGER(__name__).info(f"Starting Bot...")
+        LOGGER(__name__).info("Starting Bot...")
+
         super().__init__(
             name="AppleMusicBot",
             api_id=config.API_ID,
@@ -21,27 +23,47 @@ class AppleBot(Client):
 
     async def start(self):
         await super().start()
+
         self.id = self.me.id
-        self.name = self.me.first_name + " " + (self.me.last_name or "")
+        self.name = (
+            self.me.first_name + " " + (self.me.last_name or "")
+        ).strip()
         self.username = self.me.username
         self.mention = self.me.mention
 
-                try:
-            LOGGER(__name__).info(f"Trying to send log message to LOGGER_ID: {config.LOGGER_ID} (type: {type(config.LOGGER_ID)})")
+        LOGGER(__name__).info(
+            f"Bot started successfully: {self.name} (@{self.username})"
+        )
+
+        # Logger group is optional.
+        logger_id = getattr(config, "LOGGER_ID", None)
+
+        if not logger_id:
+            LOGGER(__name__).warning(
+                "LOGGER_ID is not configured. Skipping startup log message."
+            )
+            return
+
+        try:
             await self.send_message(
-                chat_id=config.LOGGER_ID,
-                text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
+                chat_id=logger_id,
+                text=(
+                    f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b></u>\n\n"
+                    f"ɪᴅ : <code>{self.id}</code>\n"
+                    f"ɴᴀᴍᴇ : {self.name}\n"
+                    f"ᴜsᴇʀɴᴀᴍᴇ : @{self.username}"
+                ),
             )
-        except (errors.ChannelInvalid, errors.PeerIdInvalid) as e:
-            LOGGER(__name__).error(
-                f"Bot has failed to access the log group/channel. Make sure that you have added your bot to your log group/channel.\nError: {e}"
-            )
-            exit()
+
+            LOGGER(__name__).info("Startup message sent to LOGGER_ID.")
+
         except Exception as ex:
-            LOGGER(__name__).error(
-                f"Bot has failed to access the log group/channel.\n  Reason : {type(ex).__name__} - {ex}\nLOGGER_ID value: {config.LOGGER_ID}"
+            LOGGER(__name__).warning(
+                "Could not send startup message to LOGGER_ID. "
+                f"Bot will continue running. "
+                f"Reason: {type(ex).__name__} - {ex}"
             )
-            exit()
 
     async def stop(self):
+        LOGGER(__name__).info("Stopping AppleMusicBot...")
         await super().stop()
