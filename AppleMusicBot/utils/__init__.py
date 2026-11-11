@@ -1,7 +1,13 @@
 
-from .formatters import get_readable_time, seconds_to_min, time_to_seconds
+from .formatters import (
+    get_readable_time,
+    seconds_to_min,
+    time_to_seconds,
+)
+
 from .extraction import extract_user
 from .decorators.admins import AdminRightsCheck
+from .inline.help import help_pannel
 
 
 async def int_to_alpha(num: int) -> str:
@@ -33,4 +39,5 @@ __all__ = [
     "extract_user",
     "int_to_alpha",
     "AdminRightsCheck",
+    "help_pannel",
 ]
