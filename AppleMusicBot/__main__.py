@@ -1,3 +1,4 @@
+
 import asyncio
 import importlib
 
@@ -12,59 +13,115 @@ from AppleMusicBot.utils.database import get_banned_users, get_gbanned
 from config import BANNED_USERS
 
 
-async def init():
-    if not any([
-        config.STRING1,
-        config.STRING2,
-        config.STRING3,
-        config.STRING4,
-        config.STRING5,
-    ]):
-        LOGGER(__name__).error(
-            "Assistant client variables not defined, exiting..."
-        )
-        return
+async def shutdown():
+    """Stop all started clients safely."""
 
-    await sudo()
+    LOGGER("AppleMusicBot").info("Shutting down AppleMusic...")
 
     try:
-        users = await get_gbanned()
-        for user_id in users:
-            BANNED_USERS.add(user_id)
-
-        users = await get_banned_users()
-        for user_id in users:
-            BANNED_USERS.add(user_id)
+        await AppleCall.stop()
     except Exception as e:
-        LOGGER(__name__).warning(f"Failed to load banned users: {e}")
-
-    await app.start()
-    LOGGER("AppleMusicBot").info("Bot client started.")
-
-    for all_module in ALL_MODULES:
-        # ALL_MODULES already has full path like AppleMusicBot.plugins.xxx
-        if all_module.startswith("AppleMusicBot.plugins"):
-            importlib.import_module(all_module)
-        else:
-            importlib.import_module("AppleMusicBot.plugins." + all_module.lstrip("."))
-
-    LOGGER("AppleMusicBot.plugins").info("Successfully Imported Modules...")
-
-    await userbot.start()
-    LOGGER("AppleMusicBot").info("Userbot started successfully.")
-
-    await AppleCall.start()
-    LOGGER("AppleMusicBot").info("PyTgCalls started.")
-
-    LOGGER("AppleMusicBot").info("AppleMusic Bot Started Successfully.")
+        LOGGER("AppleMusicBot").warning(
+            f"PyTgCalls shutdown warning: {type(e).__name__}: {e}"
+        )
 
     try:
-        await idle()
-    finally:
         await userbot.stop()
+    except Exception as e:
+        LOGGER("AppleMusicBot").warning(
+            f"Userbot shutdown warning: {type(e).__name__}: {e}"
+        )
+
+    try:
         await app.stop()
-        LOGGER("AppleMusicBot").info("AppleMusic Bot Stopped Successfully.")
+    except Exception as e:
+        LOGGER("AppleMusicBot").warning(
+            f"Bot shutdown warning: {type(e).__name__}: {e}"
+        )
+
+    LOGGER("AppleMusicBot").info("Shutdown completed.")
+
+
+async def init():
+    started = False
+
+    try:
+        if not any([
+            config.STRING1,
+            config.STRING2,
+            config.STRING3,
+            config.STRING4,
+            config.STRING5,
+        ]):
+            LOGGER(__name__).error(
+                "Assistant client variables not defined, exiting..."
+            )
+            return
+
+        await sudo()
+
+        try:
+            users = await get_gbanned()
+            for user_id in users:
+                BANNED_USERS.add(user_id)
+
+            users = await get_banned_users()
+            for user_id in users:
+                BANNED_USERS.add(user_id)
+
+        except Exception as e:
+            LOGGER(__name__).warning(
+                f"Failed to load banned users: {e}"
+            )
+
+        await app.start()
+        LOGGER("AppleMusicBot").info("Bot client started.")
+
+        for module in ALL_MODULES:
+            if module.startswith("AppleMusicBot.plugins"):
+                importlib.import_module(module)
+            else:
+                importlib.import_module(
+                    "AppleMusicBot.plugins." + module.lstrip(".")
+                )
+
+        LOGGER("AppleMusicBot.plugins").info(
+            "Successfully imported all plugins."
+        )
+
+        await userbot.start()
+        LOGGER("AppleMusicBot").info("Userbot started.")
+
+        await AppleCall.start()
+        started = True
+
+        LOGGER("AppleMusicBot").info(
+            "AppleMusic Bot Started Successfully."
+        )
+
+        await idle()
+
+    except KeyboardInterrupt:
+        LOGGER("AppleMusicBot").info("Shutdown requested.")
+
+    except Exception:
+        LOGGER(__name__).exception("Startup/runtime error.")
+        raise
+
+    finally:
+        await shutdown()
 
 
 if __name__ == "__main__":
-    asyncio.run(init())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.run_until_complete(init())
+
+    except KeyboardInterrupt:
+        LOGGER("AppleMusicBot").info("Process interrupted.")
+
+    finally:
+        # Keep the loop available for PyTgCalls atexit cleanup.
+        asyncio.set_event_loop(loop)
