@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt .
+
 RUN pip3 install --no-cache-dir -U pip wheel \
+    && pip3 uninstall -y motor pymongo || true \
     && pip3 install --no-cache-dir -U -r requirements.txt
 
 COPY . .
