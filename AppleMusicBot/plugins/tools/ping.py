@@ -4,7 +4,7 @@ from pyrogram import filters
 from pyrogram.types import Message
 
 from AppleMusicBot import app
-from AppleMusicBot.core.call import Anony
+from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.utils import bot_sys_stats
 from AppleMusicBot.utils.decorators.language import language
 from AppleMusicBot.utils.inline import supp_markup
