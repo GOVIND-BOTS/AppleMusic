@@ -26,29 +26,22 @@ class AppleBot(Client):
         self.username = self.me.username
         self.mention = self.me.mention
 
-        try:
+                try:
+            LOGGER(__name__).info(f"Trying to send log message to LOGGER_ID: {config.LOGGER_ID} (type: {type(config.LOGGER_ID)})")
             await self.send_message(
                 chat_id=config.LOGGER_ID,
                 text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
             )
-        except (errors.ChannelInvalid, errors.PeerIdInvalid):
+        except (errors.ChannelInvalid, errors.PeerIdInvalid) as e:
             LOGGER(__name__).error(
-                "Bot has failed to access the log group/channel. Make sure that you have added your bot to your log group/channel."
+                f"Bot has failed to access the log group/channel. Make sure that you have added your bot to your log group/channel.\nError: {e}"
             )
             exit()
         except Exception as ex:
             LOGGER(__name__).error(
-                f"Bot has failed to access the log group/channel.\n  Reason : {type(ex).__name__}."
+                f"Bot has failed to access the log group/channel.\n  Reason : {type(ex).__name__} - {ex}\nLOGGER_ID value: {config.LOGGER_ID}"
             )
             exit()
-
-        a = await self.get_chat_member(config.LOGGER_ID, self.id)
-        if a.status != ChatMemberStatus.ADMINISTRATOR:
-            LOGGER(__name__).error(
-                "Please promote your bot as an admin in your log group/channel."
-            )
-            exit()
-        LOGGER(__name__).info(f"Music Bot Started as {self.name}")
 
     async def stop(self):
         await super().stop()
