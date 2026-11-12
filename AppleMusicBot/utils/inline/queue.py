@@ -1,9 +1,8 @@
+
 from typing import Union
 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from AppleMusicBot.utils.pastebin import AnonyBin
-from AppleMusicBot.utils import seconds_to_min
-from AppleMusicBot.utils.inline.queue import queue_back_markup, queue_markup
+
 
 def queue_markup(
     _,
@@ -25,7 +24,8 @@ def queue_markup(
             ),
         ]
     ]
-    dur = [
+
+    duration_buttons = [
         [
             InlineKeyboardButton(
                 text=_["QU_B_2"].format(played, dur),
@@ -43,12 +43,14 @@ def queue_markup(
             ),
         ],
     ]
-    upl = InlineKeyboardMarkup(not_dur if DURATION == "Unknown" else dur)
-    return upl
+
+    return InlineKeyboardMarkup(
+        not_dur if DURATION == "Unknown" else duration_buttons
+    )
 
 
 def queue_back_markup(_, CPLAY):
-    upl = InlineKeyboardMarkup(
+    return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
@@ -62,16 +64,26 @@ def queue_back_markup(_, CPLAY):
             ]
         ]
     )
-    return upl
 
 
 def aq_markup(_, chat_id):
-    buttons = [
+    return [
         [
-            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(
+                text="▷",
+                callback_data=f"ADMIN Resume|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                text="II",
+                callback_data=f"ADMIN Pause|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                text="‣‣I",
+                callback_data=f"ADMIN Skip|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                text="▢",
+                callback_data=f"ADMIN Stop|{chat_id}",
+            ),
         ],
     ]
-    return buttons
