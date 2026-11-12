@@ -5,7 +5,7 @@ from pyrogram.types import Message
 
 from AppleMusicBot import app
 from AppleMusicBot.core.call import AppleBot
-from AppleMusicBot.utils import bot_sys_stats
+from AppleMusicBot.utils.sys import bot_sys_stats
 from AppleMusicBot.utils.decorators.language import language
 from AppleMusicBot.utils.inline import supp_markup
 from config import BANNED_USERS, PING_IMG_URL
