@@ -1,6 +1,6 @@
 import random
 from typing import Dict, List, Union
-
+from AppleMusicBot.core.userbot import assistants
 from AppleMusicBot import userbot
 from AppleMusicBot.core.mongo import mongodb
 
