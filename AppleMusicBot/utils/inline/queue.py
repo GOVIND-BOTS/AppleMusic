@@ -1,7 +1,9 @@
 from typing import Union
 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
+from AppleMusicBot.utils.pastebin import AnonyBin
+from AppleMusicBot.utils import seconds_to_min
+from AppleMusicBot.utils.inline.queue import queue_back_markup, queue_markup
 
 def queue_markup(
     _,
