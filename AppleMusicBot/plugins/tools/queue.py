@@ -8,7 +8,8 @@ from pyrogram.types import CallbackQuery, InputMediaPhoto, Message
 import config
 from AppleMusicBot import app
 from AppleMusicBot.misc import db
-from AppleMusicBot.utils import AnonyBin, get_channeplayCB, seconds_to_min
+from AppleMusicBot.utils.pastebin import AnonyBin
+from AppleMusicBot.utils import seconds_to_min
 from AppleMusicBot.utils.database import get_cmode, is_active_chat, is_music_playing
 from AppleMusicBot.utils.decorators.language import language, languageCB
 from AppleMusicBot.utils.inline import queue_back_markup, queue_markup
