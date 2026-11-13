@@ -1,11 +1,11 @@
 
 import os
 import tempfile
-import shutil
 import asyncio
 
 from pyrogram import filters
 from pyrogram.types import Message, CallbackQuery
+from pyrogram.errors import MessageNotModified
 
 from AppleMusicBot import app
 from AppleMusicBot.plugins.editor.keyboards import (
@@ -20,10 +20,11 @@ from AppleMusicBot.plugins.editor.engine import (
 from config import BANNED_USERS
 
 
-# Per-user editing sessions.
+# Per-user editing sessions
 SESSIONS = {}
 
 MAX_INPUT_SIZE = 500 * 1024 * 1024
+MAX_AUDIO_SIZE = 100 * 1024 * 1024
 
 
 def get_session(user_id):
@@ -40,7 +41,7 @@ def cleanup_session(user_id):
             pass
 
 
-def make_session(user_id):
+def make_session(user_id, chat_id):
     cleanup_session(user_id)
 
     directory = tempfile.TemporaryDirectory(
@@ -56,14 +57,31 @@ def make_session(user_id):
         "effect": "cinematic",
         "awaiting_music": False,
         "busy": False,
+        "chat_id": chat_id,
+        "menu_message_id": None,
     }
 
     SESSIONS[user_id] = session
     return session
 
 
-def menu_text():
-    return (
+async def safe_edit(message, text, reply_markup=None):
+    """
+    Avoid MESSAGE_NOT_MODIFIED errors.
+    """
+    try:
+        return await message.edit_text(
+            text,
+            reply_markup=reply_markup,
+        )
+    except MessageNotModified:
+        return message
+    except Exception:
+        raise
+
+
+def menu_text(effect=None):
+    text = (
         "🍎 <b>APPLECUT VIDEO EDITOR</b>\n\n"
         "Your media is ready for editing!\n\n"
         "✨ Choose your favourite effect below.\n"
@@ -76,13 +94,39 @@ def menu_text():
         "━━━━━━━━━━━━━━━━━━"
     )
 
+    if effect:
+        text += (
+            f"\n\n🎨 Selected effect: "
+            f"<b>{effect.upper()}</b>"
+        )
+
+    return text
+
+
+def valid_session(user_id, message):
+    session = get_session(user_id)
+
+    if not session:
+        return None
+
+    if session["chat_id"] != message.chat.id:
+        return None
+
+    if session["menu_message_id"] != message.id:
+        return None
+
+    return session
+
 
 @app.on_message(
     (filters.photo | filters.video) & ~BANNED_USERS
 )
 async def applecut_media(client, message: Message):
-    user_id = message.from_user.id
 
+    if not message.from_user:
+        return
+
+    user_id = message.from_user.id
     media = message.photo or message.video
 
     if not media:
@@ -94,19 +138,22 @@ async def applecut_media(client, message: Message):
         )
         return
 
-    session = make_session(user_id)
-
-    extension = (
-        ".jpg" if message.photo else ".mp4"
+    session = make_session(
+        user_id,
+        message.chat.id,
     )
+
+    extension = ".jpg" if message.photo else ".mp4"
 
     media_path = os.path.join(
         session["folder"],
         "input" + extension,
     )
 
+    status = None
+
     try:
-        await message.reply_text(
+        status = await message.reply_text(
             "📥 <b>APPLECUT:</b> Downloading your media..."
         )
 
@@ -114,36 +161,66 @@ async def applecut_media(client, message: Message):
             file_name=media_path
         )
 
+        if not os.path.exists(media_path):
+            raise RuntimeError("Media download failed.")
+
         session["media"] = media_path
         session["type"] = (
             "photo" if message.photo else "video"
         )
 
-        await message.reply_text(
-            menu_text(),
-            reply_markup=editor_menu(),
+        menu = await message.reply_text(
+            menu_text(session["effect"]),
+            reply_markup=editor_menu(session["effect"]),
         )
+
+        session["menu_message_id"] = menu.id
+
+        if status:
+            try:
+                await status.delete()
+            except Exception:
+                pass
 
     except Exception as error:
         cleanup_session(user_id)
 
-        await message.reply_text(
+        error_text = (
             f"❌ Download failed: {str(error)[:300]}"
         )
+
+        if status:
+            try:
+                await status.edit_text(error_text)
+            except Exception:
+                await message.reply_text(error_text)
+        else:
+            await message.reply_text(error_text)
 
 
 @app.on_callback_query(
     filters.regex(r"^ac:")
 )
 async def applecut_callbacks(client, query: CallbackQuery):
+
+    if not query.from_user or not query.message:
+        await query.answer(
+            "Invalid editing session.",
+            show_alert=True,
+        )
+        return
+
     user_id = query.from_user.id
     data = query.data
 
-    session = get_session(user_id)
+    session = valid_session(
+        user_id,
+        query.message,
+    )
 
     if not session:
         await query.answer(
-            "Please send a new photo or video.",
+            "This is not your editing menu. Send your own photo or video.",
             show_alert=True,
         )
         return
@@ -155,7 +232,9 @@ async def applecut_callbacks(client, query: CallbackQuery):
         )
         return
 
+    # Effect selection
     if data.startswith("ac:effect:"):
+
         effect = data.split(":")[-1]
 
         session["effect"] = effect
@@ -164,70 +243,89 @@ async def applecut_callbacks(client, query: CallbackQuery):
             f"{effect.upper()} effect selected!"
         )
 
-        await query.message.edit_text(
-            menu_text()
-            + f"\n\n🎨 Selected effect: <b>{effect.upper()}</b>",
+        await safe_edit(
+            query.message,
+            menu_text(effect),
             reply_markup=editor_menu(effect),
         )
         return
 
+    # Replace music
     if data == "ac:music":
+
         session["awaiting_music"] = True
 
         await query.answer()
 
-        await query.message.edit_text(
+        await safe_edit(
+            query.message,
             "🎵 <b>REPLACE MUSIC</b>\n\n"
-            "Now send an audio file or MP3.\n\n"
+            "Now send an audio file or MP3 in this chat.\n\n"
             "The original audio will be replaced "
             "with your uploaded music.",
             reply_markup=music_cancel(),
         )
         return
 
+    # Back to editor menu
     if data == "ac:back":
+
         session["awaiting_music"] = False
 
         await query.answer()
 
-        await query.message.edit_text(
-            menu_text(),
+        await safe_edit(
+            query.message,
+            menu_text(session["effect"]),
             reply_markup=editor_menu(session["effect"]),
         )
         return
 
+    # Cancel editing
     if data == "ac:cancel":
+
         cleanup_session(user_id)
 
         await query.answer("Editing cancelled.")
 
-        await query.message.edit_text(
-            "❌ <b>APPLECUT:</b> Editing cancelled."
+        await safe_edit(
+            query.message,
+            "❌ <b>APPLECUT:</b> Editing cancelled.",
         )
         return
 
+    # Render video
     if data == "ac:render":
+
+        if not session["media"]:
+            await query.answer(
+                "Media file is missing. Send it again.",
+                show_alert=True,
+            )
+            return
+
+        session["busy"] = True
+
         await query.answer(
             "Rendering started. Please wait..."
         )
 
-        session["busy"] = True
-
-        status = await query.message.edit_text(
-            "🎬 <b>APPLECUT 4K RENDERING</b>\n\n"
-            "⏳ Preparing your video...\n"
-            "🎨 Applying effects...\n"
-            "📺 Rendering 3840 × 2160..."
-        )
-
-        output = os.path.join(
-            session["folder"],
-            "AppleCut_4K.mp4",
-        )
+        status = None
 
         try:
-            if not session["media"]:
-                raise ValueError("Media file is missing.")
+            status = await safe_edit(
+                query.message,
+                "🎬 <b>APPLECUT 4K RENDERING</b>\n\n"
+                "⏳ Preparing your video...\n"
+                "🎨 Applying effects...\n"
+                "📺 Rendering 3840 × 2160...\n\n"
+                "Please wait.",
+            )
+
+            output = os.path.join(
+                session["folder"],
+                "AppleCut_4K.mp4",
+            )
 
             if session["type"] == "photo":
                 await render_photo(
@@ -236,7 +334,8 @@ async def applecut_callbacks(client, query: CallbackQuery):
                     session["effect"],
                     session["music"],
                 )
-            else:
+
+            elif session["type"] == "video":
                 await render_video(
                     session["media"],
                     output,
@@ -244,16 +343,22 @@ async def applecut_callbacks(client, query: CallbackQuery):
                     session["music"],
                 )
 
+            else:
+                raise ValueError("Unsupported media type.")
+
             if not os.path.exists(output):
-                raise RuntimeError("Output video was not created.")
+                raise RuntimeError(
+                    "Output video was not created."
+                )
 
-            size = os.path.getsize(output)
+            if os.path.getsize(output) == 0:
+                raise RuntimeError(
+                    "Rendered video is empty."
+                )
 
-            if size == 0:
-                raise RuntimeError("Rendered video is empty.")
-
-            await status.edit_text(
-                "📤 <b>APPLECUT:</b> Uploading your final video..."
+            await safe_edit(
+                status,
+                "📤 <b>APPLECUT:</b> Uploading your final video...",
             )
 
             await query.message.reply_video(
@@ -270,29 +375,59 @@ async def applecut_callbacks(client, query: CallbackQuery):
                 supports_streaming=True,
             )
 
-            await status.delete()
+            try:
+                await status.delete()
+            except Exception:
+                pass
 
         except Exception as error:
-            await status.edit_text(
+
+            error_text = (
                 "❌ <b>APPLECUT RENDER FAILED</b>\n\n"
-                f"<code>{str(error)[:1500]}</code>\n\n"
+                f"<code>{str(error)[:1200]}</code>\n\n"
                 "Please try again with another media file."
             )
+
+            if status:
+                try:
+                    await safe_edit(status, error_text)
+                except Exception:
+                    await query.message.reply_text(error_text)
+            else:
+                await query.message.reply_text(error_text)
 
         finally:
             cleanup_session(user_id)
 
         return
 
+    await query.answer(
+        "Unknown editor action.",
+        show_alert=True,
+    )
+
 
 @app.on_message(
     (filters.audio | filters.document) & ~BANNED_USERS
 )
 async def applecut_music(client, message: Message):
+
+    if not message.from_user:
+        return
+
     user_id = message.from_user.id
     session = get_session(user_id)
 
-    if not session or not session["awaiting_music"]:
+    if not session:
+        return
+
+    if session["chat_id"] != message.chat.id:
+        return
+
+    if not session["awaiting_music"]:
+        return
+
+    if session["busy"]:
         return
 
     media = message.audio or message.document
@@ -308,7 +443,7 @@ async def applecut_music(client, message: Message):
         )
         return
 
-    if media.file_size and media.file_size > 100 * 1024 * 1024:
+    if media.file_size and media.file_size > MAX_AUDIO_SIZE:
         await message.reply_text(
             "❌ Audio must be smaller than 100 MB."
         )
@@ -327,6 +462,9 @@ async def applecut_music(client, message: Message):
         await message.download(
             file_name=audio_path
         )
+
+        if not os.path.exists(audio_path):
+            raise RuntimeError("Audio download failed.")
 
         session["music"] = audio_path
         session["awaiting_music"] = False
