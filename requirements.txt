@@ -34,7 +34,7 @@ search_engine_parser
 py-tgcalls==0.9.7
 pykeyboard
 pyshorteners
-pyrogram==2.0.106
+kurigram
 python-dotenv
 pyyaml==6.0.1
 requests
