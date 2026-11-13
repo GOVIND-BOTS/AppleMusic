@@ -1,7 +1,6 @@
 
 import os
 import tempfile
-import asyncio
 
 from pyrogram import filters
 from pyrogram.types import Message, CallbackQuery
@@ -20,7 +19,6 @@ from AppleMusicBot.plugins.editor.engine import (
 from config import BANNED_USERS
 
 
-# Per-user editing sessions
 SESSIONS = {}
 
 MAX_INPUT_SIZE = 500 * 1024 * 1024
@@ -55,7 +53,10 @@ def make_session(user_id, chat_id):
         "type": None,
         "music": None,
         "effect": "cinematic",
+        "duration": 10,
+        "start_time": 0,
         "awaiting_music": False,
+        "awaiting_start": False,
         "busy": False,
         "chat_id": chat_id,
         "menu_message_id": None,
@@ -66,9 +67,6 @@ def make_session(user_id, chat_id):
 
 
 async def safe_edit(message, text, reply_markup=None):
-    """
-    Avoid MESSAGE_NOT_MODIFIED errors.
-    """
     try:
         return await message.edit_text(
             text,
@@ -76,16 +74,28 @@ async def safe_edit(message, text, reply_markup=None):
         )
     except MessageNotModified:
         return message
-    except Exception:
-        raise
 
 
-def menu_text(effect=None):
-    text = (
+def menu_text(session):
+    media_type = session["type"]
+    duration = session["duration"]
+
+    if media_type == "photo":
+        title = "PHOTO TO VIDEO"
+        timing = f"📸 Photo video duration: <b>{duration} seconds</b>"
+    else:
+        title = "VIDEO EDITOR"
+        timing = (
+            f"🎬 Selected clip length: <b>{duration} seconds</b>\n"
+            f"⏱ Start time: <b>{session['start_time']} seconds</b>"
+        )
+
+    return (
         "🍎 <b>APPLECUT VIDEO EDITOR</b>\n\n"
-        "Your media is ready for editing!\n\n"
-        "✨ Choose your favourite effect below.\n"
-        "🎵 Replace the original audio with your music.\n"
+        f"✨ <b>{title}</b>\n\n"
+        f"🎨 Selected style: <b>{session['effect'].upper()}</b>\n"
+        f"{timing}\n\n"
+        "🎵 Replace original audio with your music.\n"
         "🎬 Render your project in 4K Ultra HD.\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "📺 Output: <b>3840 × 2160</b>\n"
@@ -94,13 +104,14 @@ def menu_text(effect=None):
         "━━━━━━━━━━━━━━━━━━"
     )
 
-    if effect:
-        text += (
-            f"\n\n🎨 Selected effect: "
-            f"<b>{effect.upper()}</b>"
-        )
 
-    return text
+def make_keyboard(session):
+    return editor_menu(
+        effect=session["effect"],
+        duration=session["duration"],
+        media_type=session["type"],
+        start_time=session["start_time"],
+    )
 
 
 def valid_session(user_id, message):
@@ -116,6 +127,38 @@ def valid_session(user_id, message):
         return None
 
     return session
+
+
+def parse_time(value):
+    """
+    Accepts:
+    15
+    01:15
+    00:01:15
+    """
+    value = value.strip()
+
+    if value.isdigit():
+        return int(value)
+
+    parts = value.split(":")
+
+    if not all(part.isdigit() for part in parts):
+        raise ValueError("Invalid time format.")
+
+    if len(parts) == 2:
+        minutes, seconds = map(int, parts)
+        if seconds >= 60:
+            raise ValueError("Seconds must be below 60.")
+        return minutes * 60 + seconds
+
+    if len(parts) == 3:
+        hours, minutes, seconds = map(int, parts)
+        if minutes >= 60 or seconds >= 60:
+            raise ValueError("Invalid time format.")
+        return hours * 3600 + minutes * 60 + seconds
+
+    raise ValueError("Use seconds, MM:SS or HH:MM:SS.")
 
 
 @app.on_message(
@@ -138,89 +181,74 @@ async def applecut_media(client, message: Message):
         )
         return
 
-    session = make_session(
-        user_id,
-        message.chat.id,
-    )
+    session = make_session(user_id, message.chat.id)
 
-    extension = ".jpg" if message.photo else ".mp4"
+    if message.photo:
+        session["type"] = "photo"
+        session["duration"] = 10
+        extension = ".jpg"
+    else:
+        session["type"] = "video"
+        session["duration"] = 30
+        extension = ".mp4"
 
     media_path = os.path.join(
         session["folder"],
         "input" + extension,
     )
 
-    status = None
+    status = await message.reply_text(
+        "📥 <b>APPLECUT:</b> Downloading your media..."
+    )
 
     try:
-        status = await message.reply_text(
-            "📥 <b>APPLECUT:</b> Downloading your media..."
-        )
-
-        await message.download(
-            file_name=media_path
-        )
+        await message.download(file_name=media_path)
 
         if not os.path.exists(media_path):
             raise RuntimeError("Media download failed.")
 
         session["media"] = media_path
-        session["type"] = (
-            "photo" if message.photo else "video"
-        )
 
         menu = await message.reply_text(
-            menu_text(session["effect"]),
-            reply_markup=editor_menu(session["effect"]),
+            menu_text(session),
+            reply_markup=make_keyboard(session),
         )
 
         session["menu_message_id"] = menu.id
 
-        if status:
-            try:
-                await status.delete()
-            except Exception:
-                pass
+        try:
+            await status.delete()
+        except Exception:
+            pass
 
     except Exception as error:
         cleanup_session(user_id)
 
-        error_text = (
-            f"❌ Download failed: {str(error)[:300]}"
-        )
-
-        if status:
-            try:
-                await status.edit_text(error_text)
-            except Exception:
-                await message.reply_text(error_text)
-        else:
-            await message.reply_text(error_text)
+        try:
+            await status.edit_text(
+                f"❌ Download failed: {str(error)[:300]}"
+            )
+        except Exception:
+            await message.reply_text(
+                f"❌ Download failed: {str(error)[:300]}"
+            )
 
 
-@app.on_callback_query(
-    filters.regex(r"^ac:")
-)
+@app.on_callback_query(filters.regex(r"^ac:"))
 async def applecut_callbacks(client, query: CallbackQuery):
 
     if not query.from_user or not query.message:
-        await query.answer(
-            "Invalid editing session.",
-            show_alert=True,
-        )
+        await query.answer("Invalid session.", show_alert=True)
         return
 
     user_id = query.from_user.id
     data = query.data
 
-    session = valid_session(
-        user_id,
-        query.message,
-    )
+    session = valid_session(user_id, query.message)
 
     if not session:
         await query.answer(
-            "This is not your editing menu. Send your own photo or video.",
+            "This is not your editing menu. Send your own media.",
             show_alert=True,
         )
         return
@@ -232,7 +260,7 @@ async def applecut_callbacks(client, query: CallbackQuery):
         )
         return
 
-    # Effect selection
+    # Select effect
     if data.startswith("ac:effect:"):
 
         effect = data.split(":")[-1]
@@ -240,13 +268,71 @@ async def applecut_callbacks(client, query: CallbackQuery):
         session["effect"] = effect
 
         await query.answer(
-            f"{effect.upper()} effect selected!"
+            f"{effect.upper()} selected!"
         )
 
         await safe_edit(
             query.message,
-            menu_text(effect),
-            reply_markup=editor_menu(effect),
+            menu_text(session),
+            reply_markup=make_keyboard(session),
+        )
+        return
+
+    # Select duration
+    if data.startswith("ac:duration:"):
+
+        value = data.split(":")[-1]
+
+        if value == "info":
+            await query.answer(
+                "Choose your preferred duration below."
+            )
+            return
+
+        try:
+            duration = int(value)
+        except ValueError:
+            await query.answer("Invalid duration.", show_alert=True)
+            return
+
+        if duration not in (5, 10, 15, 30, 45, 60):
+            await query.answer("Unsupported duration.", show_alert=True)
+            return
+
+        session["duration"] = duration
+
+        await query.answer(
+            f"Duration set to {duration} seconds."
+        )
+
+        await safe_edit(
+            query.message,
+            menu_text(session),
+            reply_markup=make_keyboard(session),
+        )
+        return
+
+    # Select video start time
+    if data == "ac:start":
+
+        if session["type"] != "video":
+            await query.answer(
+                "Start time is only available for videos.",
+                show_alert=True,
+            )
+            return
+
+        session["awaiting_start"] = True
+
+        await query.answer()
+
+        await query.message.reply_text(
+            "⏱ <b>VIDEO START TIME</b>\n\n"
+            "Send the starting time in one of these formats:\n\n"
+            "• <code>15</code> = 15 seconds\n"
+            "• <code>01:15</code> = 1 minute 15 seconds\n"
+            "• <code>00:01:15</code> = 1 minute 15 seconds\n\n"
+            "The selected clip will start from this point."
         )
         return
 
@@ -260,14 +346,13 @@ async def applecut_callbacks(client, query: CallbackQuery):
         await safe_edit(
             query.message,
             "🎵 <b>REPLACE MUSIC</b>\n\n"
-            "Now send an audio file or MP3 in this chat.\n\n"
-            "The original audio will be replaced "
-            "with your uploaded music.",
+            "Send an audio file or MP3 in this chat.\n\n"
+            "Your original audio will be replaced.",
             reply_markup=music_cancel(),
         )
         return
 
-    # Back to editor menu
+    # Back
     if data == "ac:back":
 
         session["awaiting_music"] = False
@@ -276,12 +361,12 @@ async def applecut_callbacks(client, query: CallbackQuery):
 
         await safe_edit(
             query.message,
-            menu_text(session["effect"]),
-            reply_markup=editor_menu(session["effect"]),
+            menu_text(session),
+            reply_markup=make_keyboard(session),
         )
         return
 
-    # Cancel editing
+    # Cancel
     if data == "ac:cancel":
 
         cleanup_session(user_id)
@@ -294,7 +379,7 @@ async def applecut_callbacks(client, query: CallbackQuery):
         )
         return
 
-    # Render video
+    # Render
     if data == "ac:render":
 
         if not session["media"]:
@@ -305,10 +390,10 @@ async def applecut_callbacks(client, query: CallbackQuery):
             return
 
         session["busy"] = True
+        session["awaiting_music"] = False
+        session["awaiting_start"] = False
 
-        await query.answer(
-            "Rendering started. Please wait..."
-        )
+        await query.answer("Rendering started. Please wait...")
 
         status = None
 
@@ -316,8 +401,9 @@ async def applecut_callbacks(client, query: CallbackQuery):
             status = await safe_edit(
                 query.message,
                 "🎬 <b>APPLECUT 4K RENDERING</b>\n\n"
-                "⏳ Preparing your video...\n"
-                "🎨 Applying effects...\n"
+                "⏳ Preparing your project...\n"
+                "🎨 Applying selected effects...\n"
+                f"⏱ Duration: <b>{session['duration']} seconds</b>\n"
                 "📺 Rendering 3840 × 2160...\n\n"
                 "Please wait.",
             )
@@ -333,6 +419,7 @@ async def applecut_callbacks(client, query: CallbackQuery):
                     output,
                     session["effect"],
                     session["music"],
+                    session["duration"],
                 )
 
             elif session["type"] == "video":
@@ -341,20 +428,18 @@ async def applecut_callbacks(client, query: CallbackQuery):
                     output,
                     session["effect"],
                     session["music"],
+                    session["duration"],
+                    session["start_time"],
                 )
 
             else:
                 raise ValueError("Unsupported media type.")
 
             if not os.path.exists(output):
-                raise RuntimeError(
-                    "Output video was not created."
-                )
+                raise RuntimeError("Output video was not created.")
 
             if os.path.getsize(output) == 0:
-                raise RuntimeError(
-                    "Rendered video is empty."
-                )
+                raise RuntimeError("Rendered video is empty.")
 
             await safe_edit(
                 status,
@@ -367,6 +452,7 @@ async def applecut_callbacks(client, query: CallbackQuery):
                     "🍎 <b>APPLECUT EDITOR</b>\n\n"
                     "✨ Your edited video is ready!\n\n"
                     f"🎨 Effect: <b>{session['effect'].upper()}</b>\n"
+                    f"⏱ Duration: <b>{session['duration']} seconds</b>\n"
                     "📺 Quality: <b>4K UHD</b>\n"
                     "🎞 FPS: <b>30</b>\n"
                     "🎬 Format: <b>MP4</b>\n\n"
@@ -401,10 +487,52 @@ async def applecut_callbacks(client, query: CallbackQuery):
 
         return
 
-    await query.answer(
-        "Unknown editor action.",
-        show_alert=True,
-    )
+    await query.answer("Unknown editor action.", show_alert=True)
+
+
+@app.on_message(
+    filters.text & ~BANNED_USERS
+)
+async def applecut_start_time(client, message: Message):
+
+    if not message.from_user:
+        return
+
+    user_id = message.from_user.id
+    session = get_session(user_id)
+
+    if not session:
+        return
+
+    if session["chat_id"] != message.chat.id:
+        return
+
+    if not session["awaiting_start"]:
+        return
+
+    if session["busy"]:
+        return
+
+    try:
+        start_time = parse_time(message.text)
+
+        if start_time < 0:
+            raise ValueError("Start time cannot be negative.")
+
+        session["start_time"] = start_time
+        session["awaiting_start"] = False
+
+        await message.reply_text(
+            f"✅ Video start time set to <b>{start_time} seconds</b>.\n\n"
+            "Press the buttons on your AppleCut editing menu "
+            "to continue."
+        )
+
+    except ValueError as error:
+        await message.reply_text(
+            f"❌ {str(error)}\n\n"
+            "Example: <code>15</code> or <code>01:15</code>"
+        )
 
 
 @app.on_message(
@@ -424,10 +552,7 @@ async def applecut_music(client, message: Message):
     if session["chat_id"] != message.chat.id:
         return
 
-    if not session["awaiting_music"]:
-        return
-
-    if session["busy"]:
+    if not session["awaiting_music"] or session["busy"]:
         return
 
     media = message.audio or message.document
@@ -459,9 +584,7 @@ async def applecut_music(client, message: Message):
             "🎵 Downloading replacement music..."
         )
 
-        await message.download(
-            file_name=audio_path
-        )
+        await message.download(file_name=audio_path)
 
         if not os.path.exists(audio_path):
             raise RuntimeError("Audio download failed.")
@@ -469,12 +592,15 @@ async def applecut_music(client, message: Message):
         session["music"] = audio_path
         session["awaiting_music"] = False
 
-        await message.reply_text(
+        menu = await message.reply_text(
             "✅ <b>Music successfully added!</b>\n\n"
             "Your original audio will be replaced.\n"
-            "Return to your editing menu and press Render 4K.",
-            reply_markup=editor_menu(session["effect"]),
+            "Choose Render 4K from your editing menu.",
+            reply_markup=make_keyboard(session),
         )
+
+        # New menu is now the active menu
+        session["menu_message_id"] = menu.id
 
     except Exception as error:
         await message.reply_text(
