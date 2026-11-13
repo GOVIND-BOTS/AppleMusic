@@ -89,7 +89,7 @@ class Userbot(Client):
                 )
 
                 # Join configured groups using the correct assistant.
-                for chat in ("College_wali_masti", "Saykkunomusic"):
+                for chat in ("GOVIND_BOTS", "GOVIND_USERBOT_UPDATE"):
                     try:
                         await client.join_chat(chat)
                     except Exception as ex:
