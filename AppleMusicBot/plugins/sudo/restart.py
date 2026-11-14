@@ -1,7 +1,6 @@
 import asyncio
 import os
 import shutil
-import socket
 from datetime import datetime
 
 import urllib3
@@ -10,8 +9,8 @@ from git.exc import GitCommandError, InvalidGitRepositoryError
 from pyrogram import filters
 
 import config
-from AppleMusicBot import app
-from AppleMusicBot.misc import HAPP, SUDOERS, XCB
+from AppleMusicBot import app, misc
+from AppleMusicBot.misc import SUDOERS
 from AppleMusicBot.utils.database import (
     get_active_chats,
     remove_active_chat,
@@ -24,7 +23,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 async def is_heroku():
-    return "heroku" in socket.getfqdn()
+    return misc.is_heroku()
 
 
 @app.on_message(filters.command(["getlog", "logs", "getlogs"]) & SUDOERS)
@@ -32,16 +31,17 @@ async def is_heroku():
 async def log_(client, message, _):
     try:
         await message.reply_document(document="log.txt")
-    except:
+    except Exception:
         await message.reply_text(_["server_1"])
 
 
 @app.on_message(filters.command(["update", "gitpull"]) & SUDOERS)
 @language
 async def update_(client, message, _):
-    if await is_heroku():
-        if HAPP is None:
-            return await message.reply_text(_["server_2"])
+    on_heroku = await is_heroku()
+    if on_heroku and misc.HAPP is None:
+        return await message.reply_text(_["server_2"])
+
     response = await message.reply_text(_["server_3"])
     try:
         repo = Repo()
@@ -49,89 +49,116 @@ async def update_(client, message, _):
         return await response.edit(_["server_4"])
     except InvalidGitRepositoryError:
         return await response.edit(_["server_5"])
-    to_exc = f"git fetch origin {config.UPSTREAM_BRANCH} &> /dev/null"
-    os.system(to_exc)
-    await asyncio.sleep(7)
-    verification = ""
-    REPO_ = repo.remotes.origin.url.split(".git")[0]
-    for checks in repo.iter_commits(f"HEAD..origin/{config.UPSTREAM_BRANCH}"):
-        verification = str(checks.count())
-    if verification == "":
-        return await response.edit(_["server_6"])
-    updates = ""
-    ordinal = lambda format: "%d%s" % (
-        format,
-        "tsnrhtdd"[(format // 10 % 10 != 1) * (format % 10 < 4) * format % 10 :: 4],
+
+    try:
+        repo.remotes.origin.fetch(config.UPSTREAM_BRANCH)
+    except Exception as exc:
+        return await response.edit(
+            f"Git fetch failed: {type(exc).__name__}: {exc}"
+        )
+
+    verification = list(
+        repo.iter_commits(f"HEAD..origin/{config.UPSTREAM_BRANCH}")
     )
-    for info in repo.iter_commits(f"HEAD..origin/{config.UPSTREAM_BRANCH}"):
-        updates += f"<b>➣ #{info.count()}: <a href={REPO_}/commit/{info}>{info.summary}</a> ʙʏ -> {info.author}</b>\n\t\t\t\t<b>➥ ᴄᴏᴍᴍɪᴛᴇᴅ ᴏɴ :</b> {ordinal(int(datetime.fromtimestamp(info.committed_date).strftime('%d')))} {datetime.fromtimestamp(info.committed_date).strftime('%b')}, {datetime.fromtimestamp(info.committed_date).strftime('%Y')}\n\n"
-    _update_response_ = "<b>ᴀ ɴᴇᴡ ᴜᴩᴅᴀᴛᴇ ɪs ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛʜᴇ ʙᴏᴛ !</b>\n\n➣ ᴩᴜsʜɪɴɢ ᴜᴩᴅᴀᴛᴇs ɴᴏᴡ\n\n<b><u>ᴜᴩᴅᴀᴛᴇs:</u></b>\n\n"
-    _final_updates_ = _update_response_ + updates
-    if len(_final_updates_) > 4096:
+    if not verification:
+        return await response.edit(_["server_6"])
+
+    repo_url = repo.remotes.origin.url.split(".git")[0]
+    updates = ""
+    for info in verification:
+        committed = datetime.fromtimestamp(info.committed_date)
+        day = committed.day
+        suffix = "th" if 11 <= day % 100 <= 13 else {
+            1: "st", 2: "nd", 3: "rd"
+        }.get(day % 10, "th")
+        updates += (
+            f"<b>➣ #{info.count()}: "
+            f"<a href={repo_url}/commit/{info}>{info.summary}</a> "
+            f"ʙʏ -> {info.author}</b>\n"
+            f"<b>➥ ᴄᴏᴍᴍɪᴛᴇᴅ ᴏɴ :</b> "
+            f"{day}{suffix} {committed.strftime('%b, %Y')}\n\n"
+        )
+
+    header = (
+        "<b>ᴀ ɴᴇᴡ ᴜᴩᴅᴀᴛᴇ ɪs ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛʜᴇ ʙᴏᴛ !</b>\n\n"
+        "➣ ᴩᴜsʜɪɴɢ ᴜᴩᴅᴀᴛᴇs ɴᴏᴡ\n\n"
+        "<b><u>ᴜᴩᴅᴀᴛᴇs:</u></b>\n\n"
+    )
+    final_text = header + updates
+    if len(final_text) > 4096:
         url = await AnonyBin(updates)
         nrs = await response.edit(
-            f"<b>ᴀ ɴᴇᴡ ᴜᴩᴅᴀᴛᴇ ɪs ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛʜᴇ ʙᴏᴛ !</b>\n\n➣ ᴩᴜsʜɪɴɢ ᴜᴩᴅᴀᴛᴇs ɴᴏᴡ\n\n<u><b>ᴜᴩᴅᴀᴛᴇs :</b></u>\n\n<a href={url}>ᴄʜᴇᴄᴋ ᴜᴩᴅᴀᴛᴇs</a>"
+            f"{header}<a href={url}>ᴄʜᴇᴄᴋ ᴜᴩᴅᴀᴛᴇs</a>"
         )
     else:
-        nrs = await response.edit(_final_updates_, disable_web_page_preview=True)
-    os.system("git stash &> /dev/null && git pull")
+        nrs = await response.edit(
+            final_text, disable_web_page_preview=True
+        )
+
+    try:
+        repo.git.stash("push", "--include-untracked")
+        repo.remotes.origin.pull(config.UPSTREAM_BRANCH)
+    except Exception as exc:
+        return await response.edit(
+            f"Update failed: {type(exc).__name__}: {exc}"
+        )
 
     try:
         served_chats = await get_active_chats()
-        for x in served_chats:
+        for chat_id in list(served_chats):
             try:
                 await app.send_message(
-                    chat_id=int(x),
-                    text=_["server_8"].format(app.mention),
+                    chat_id=int(chat_id),
+                    text=_[ "server_8" ].format(app.mention),
                 )
-                await remove_active_chat(x)
-                await remove_active_video_chat(x)
-            except:
+                await remove_active_chat(chat_id)
+                await remove_active_video_chat(chat_id)
+            except Exception:
                 pass
         await response.edit(f"{nrs.text}\n\n{_['server_7']}")
-    except:
+    except Exception:
         pass
 
-    if await is_heroku():
+    if on_heroku:
         try:
-            os.system(
-                f"{XCB[5]} {XCB[7]} {XCB[9]}{XCB[4]}{XCB[0]*2}{XCB[6]}{XCB[4]}{XCB[8]}{XCB[1]}{XCB[5]}{XCB[2]}{XCB[6]}{XCB[2]}{XCB[3]}{XCB[0]}{XCB[10]}{XCB[2]}{XCB[5]} {XCB[11]}{XCB[4]}{XCB[12]}"
-            )
+            await asyncio.to_thread(misc.HAPP.restart)
             return
-        except Exception as err:
-            await response.edit(f"{nrs.text}\n\n{_['server_9']}")
-            return await app.send_message(
-                chat_id=config.LOGGER_ID,
-                text=_["server_10"].format(err),
+        except Exception as exc:
+            return await response.edit(
+                f"{nrs.text}\n\nHeroku restart failed: "
+                f"{type(exc).__name__}: {exc}"
             )
-    else:
-        os.system("pip3 install -r requirements.txt")
-        os.system(f"kill -9 {os.getpid()} && bash start")
-        exit()
+
+    os.system("pip install -r requirements.txt")
+    os.execlp("bash", "bash", "start")
 
 
 @app.on_message(filters.command(["restart"]) & SUDOERS)
 async def restart_(_, message):
     response = await message.reply_text("ʀᴇsᴛᴀʀᴛɪɴɢ...")
-    ac_chats = await get_active_chats()
-    for x in ac_chats:
+    for chat_id in list(await get_active_chats()):
         try:
             await app.send_message(
-                chat_id=int(x),
-                text=f"{app.mention} ɪs ʀᴇsᴛᴀʀᴛɪɴɢ...\n\nʏᴏᴜ ᴄᴀɴ sᴛᴀʀᴛ ᴩʟᴀʏɪɴɢ ᴀɢᴀɪɴ ᴀғᴛᴇʀ 15-20 sᴇᴄᴏɴᴅs.",
+                chat_id=int(chat_id),
+                text=(
+                    f"{app.mention} ɪs ʀᴇsᴛᴀʀᴛɪɴɢ...\n\n"
+                    "ʏᴏᴜ ᴄᴀɴ sᴛᴀʀᴛ ᴩʟᴀʏɪɴɢ ᴀɢᴀɪɴ ᴀғᴛᴇʀ 15-20 sᴇᴄᴏɴᴅs."
+                ),
             )
-            await remove_active_chat(x)
-            await remove_active_video_chat(x)
-        except:
+            await remove_active_chat(chat_id)
+            await remove_active_video_chat(chat_id)
+        except Exception:
             pass
 
-    try:
-        shutil.rmtree("downloads")
-        shutil.rmtree("raw_files")
-        shutil.rmtree("cache")
-    except:
-        pass
+    for folder in ("downloads", "raw_files", "cache"):
+        try:
+            shutil.rmtree(folder)
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+
     await response.edit_text(
-        "» ʀᴇsᴛᴀʀᴛ ᴘʀᴏᴄᴇss sᴛᴀʀᴛᴇᴅ, ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ғᴇᴡ sᴇᴄᴏɴᴅs ᴜɴᴛɪʟ ᴛʜᴇ ʙᴏᴛ sᴛᴀʀᴛs..."
+        "» ʀᴇsᴛᴀʀᴛ ᴘʀᴏᴄᴇss sᴛᴀʀᴛᴇᴅ, ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ғᴇᴡ sᴇᴄᴏɴᴅs..."
     )
-    os.system(f"kill -9 {os.getpid()} && bash start")
+    os.execlp("bash", "bash", "start")
