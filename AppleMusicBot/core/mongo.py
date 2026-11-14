@@ -39,3 +39,7 @@ async def ping_mongo():
         ) from exc
 
     LOGGER(__name__).info("MongoDB connection verified.")
+
+
+# Backward-compatible name used by the startup module.
+ping_database = ping_mongo
