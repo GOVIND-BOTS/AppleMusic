@@ -6,28 +6,55 @@ from pyrogram import filters
 
 load_dotenv()
 
-# Get this value from my.telegram.org/apps
-API_ID = int(getenv("API_ID"))
-API_HASH = getenv("API_HASH")
 
-# Get your token from @BotFather on Telegram.
+def _env_int(name, default=None, *, required=False):
+    value = getenv(name)
+    if value is None or not value.strip():
+        if required:
+            raise RuntimeError(
+                f"Missing required environment variable: {name}. "
+                "Set it in your hosting provider's environment settings."
+            )
+        return default
+    try:
+        return int(value.strip())
+    except ValueError as exc:
+        raise RuntimeError(
+            f"Invalid value for {name}: expected an integer."
+        ) from exc
+
+
+def _env_bool(name, default=False):
+    value = getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+# Telegram API credentials: https://my.telegram.org/apps
+API_ID = _env_int("API_ID", required=True)
+API_HASH = getenv("API_HASH")
 BOT_TOKEN = getenv("BOT_TOKEN")
 
-# Get your mongo url from cloud.mongodb.com
-MONGO_DB_URI = getenv("MONGO_DB_URI", None)
+if not API_HASH:
+    raise RuntimeError("Missing required environment variable: API_HASH.")
+if not BOT_TOKEN:
+    raise RuntimeError("Missing required environment variable: BOT_TOKEN.")
 
-DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 300))
+# Database
+MONGO_DB_URI = getenv("MONGO_DB_URI")
 
-# Chat id of a group for logging bot's activities
-LOGGER_ID = int(getenv("LOGGER_ID", "").strip() or "0")
+# Playback limits
+DURATION_LIMIT_MIN = _env_int("DURATION_LIMIT", 300)
 
-#  Telegram by /id
-OWNER_ID = int(getenv("OWNER_ID", 8250224070))
+# Optional activity log chat. The bot works without a logger group.
+LOGGER_ID = _env_int("LOGGER_ID", 0)
 
-## Fill these variables if you're deploying on heroku.
-# Your heroku app name
+# Keep the configured owner ID and all assistant accounts supported.
+OWNER_ID = _env_int("OWNER_ID", 8250224070)
+
+# Optional Heroku integration
 HEROKU_APP_NAME = getenv("HEROKU_APP_NAME")
-# Get it from http://dashboard.heroku.com/account
 HEROKU_API_KEY = getenv("HEROKU_API_KEY")
 
 UPSTREAM_REPO = getenv(
@@ -35,39 +62,29 @@ UPSTREAM_REPO = getenv(
     "https://github.com/GOVIND-BOTS/AppleMusic",
 )
 UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
-GIT_TOKEN = getenv(
-    "GIT_TOKEN", None
-)  # Fill this variable if your upstream repository is private
+GIT_TOKEN = getenv("GIT_TOKEN")
 
-SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/GOVIND_USERBOT_SUPPORT")
+SUPPORT_CHANNEL = getenv(
+    "SUPPORT_CHANNEL", "https://t.me/GOVIND_USERBOT_SUPPORT"
+)
 SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/GOVIND_BOTS")
 
-# Set this to True if you want the assistant to automatically leave chats after an interval
-AUTO_LEAVING_ASSISTANT = bool(getenv("AUTO_LEAVING_ASSISTANT", True))
+AUTO_LEAVING_ASSISTANT = _env_bool("AUTO_LEAVING_ASSISTANT", True)
 
+# Spotify credentials are optional; Spotify links can be disabled without them.
+SPOTIFY_CLIENT_ID = getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET")
 
-# Get this credentials from https://developer.spotify.com/dashboard
-SPOTIFY_CLIENT_ID = getenv("SPOTIFY_CLIENT_ID", None)
-SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET", None)
+PLAYLIST_FETCH_LIMIT = _env_int("PLAYLIST_FETCH_LIMIT", 25)
+TG_AUDIO_FILESIZE_LIMIT = _env_int("TG_AUDIO_FILESIZE_LIMIT", 204857600)
+TG_VIDEO_FILESIZE_LIMIT = _env_int("TG_VIDEO_FILESIZE_LIMIT", 2073741824)
 
-
-# Maximum limit for fetching playlist's track from youtube, spotify, apple links.
-PLAYLIST_FETCH_LIMIT = int(getenv("PLAYLIST_FETCH_LIMIT", 25))
-
-
-# Telegram audio and video file size limit (in bytes)
-TG_AUDIO_FILESIZE_LIMIT = int(getenv("TG_AUDIO_FILESIZE_LIMIT", 204857600))
-TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", 2073741824))
-# Checkout https://www.gbmb.org/mb-to-bytes for converting mb to bytes
-
-
-# Get your pyrogram v2 session from @StringFatherBot on Telegram
-STRING1 = getenv("STRING_SESSION", None)
-STRING2 = getenv("STRING_SESSION2", None)
-STRING3 = getenv("STRING_SESSION3", None)
-STRING4 = getenv("STRING_SESSION4", None)
-STRING5 = getenv("STRING_SESSION5", None)
-
+# Up to five Pyrogram assistant sessions.
+STRING1 = getenv("STRING_SESSION")
+STRING2 = getenv("STRING_SESSION2")
+STRING3 = getenv("STRING_SESSION3")
+STRING4 = getenv("STRING_SESSION4")
+STRING5 = getenv("STRING_SESSION5")
 
 BANNED_USERS = filters.user()
 adminlist = {}
@@ -76,9 +93,9 @@ votemode = {}
 autoclean = []
 confirmer = {}
 
-
-START_IMG_URL = ["https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg"]
-    
+START_IMG_URL = [
+    "https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg"
+]
 PING_IMG_URL = getenv(
     "PING_IMG_URL", "https://mallucampaign.in/images/img_1692101295.jpg"
 )
@@ -94,23 +111,22 @@ SPOTIFY_ALBUM_IMG_URL = "https://graph.org/file/0bb6f36796d496b4254ff.jpg"
 SPOTIFY_PLAYLIST_IMG_URL = "https://graph.org/file/0bb6f36796d496b4254ff.jpg"
 
 
-
 def time_to_seconds(time):
     stringt = str(time)
-    return sum(int(x) * 60**i for i, x in enumerate(reversed(stringt.split(":"))))
+    return sum(
+        int(part) * 60**index
+        for index, part in enumerate(reversed(stringt.split(":")))
+    )
 
 
 DURATION_LIMIT = int(time_to_seconds(f"{DURATION_LIMIT_MIN}:360"))
 
-
-if SUPPORT_CHANNEL:
-    if not re.match("(?:http|https)://", SUPPORT_CHANNEL):
+for setting_name, setting_value in (
+    ("SUPPORT_CHANNEL", SUPPORT_CHANNEL),
+    ("SUPPORT_CHAT", SUPPORT_CHAT),
+):
+    if setting_value and not re.match(r"^https?://", setting_value):
         raise SystemExit(
-            "[ERROR] - Your SUPPORT_CHANNEL url is wrong. Please ensure that it starts with https://"
-        )
-
-if SUPPORT_CHAT:
-    if not re.match("(?:http|https)://", SUPPORT_CHAT):
-        raise SystemExit(
-            "[ERROR] - Your SUPPORT_CHAT url is wrong. Please ensure that it starts with https://"
+            f"[ERROR] - Your {setting_name} URL is invalid. "
+            "It must start with http:// or https://."
         )
