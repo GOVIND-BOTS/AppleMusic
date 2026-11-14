@@ -34,7 +34,7 @@ search_engine_parser
 
 # Telegram Core
 kurigram
-py-tgcalls==0.9.7
+py-tgcalls[pyrogram]==3.0.0
 TgCrypto==1.2.5
 pykeyboard
 pyshorteners
