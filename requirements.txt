@@ -33,8 +33,8 @@ future==0.18.3
 search_engine_parser
 
 # Telegram Core
-kurigram
-py-tgcalls==0.9.7
+kurigram==2.2.23
+py-tgcalls[pyrogram]==2.2.11
 TgCrypto==1.2.5
 pykeyboard
 pyshorteners
