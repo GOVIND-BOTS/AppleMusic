@@ -1,5 +1,7 @@
-import asyncio
+import base64
 import shlex
+import subprocess
+from contextlib import nullcontext
 from typing import Tuple
 
 from git import Repo
@@ -11,61 +13,109 @@ from ..logging import LOGGER
 
 
 def install_req(cmd: str) -> Tuple[str, str, int, int]:
-    async def install_requirements():
-        args = shlex.split(cmd)
-        process = await asyncio.create_subprocess_exec(
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await process.communicate()
-        return (
-            stdout.decode("utf-8", "replace").strip(),
-            stderr.decode("utf-8", "replace").strip(),
-            process.returncode,
-            process.pid,
-        )
+    """Run a dependency command synchronously and return output/status/PID."""
+    args = shlex.split(cmd)
+    process = subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    stdout, stderr = process.communicate()
+    return (
+        stdout.strip(),
+        stderr.strip(),
+        process.returncode,
+        process.pid,
+    )
 
-    return asyncio.get_event_loop().run_until_complete(install_requirements())
+
+def _authenticated_git_context(repo):
+    """Authenticate GitHub HTTPS requests without saving a token in origin.url."""
+    token = config.GIT_TOKEN
+    if not token:
+        return nullcontext()
+
+    credentials = base64.b64encode(
+        f"x-access-token:{token}".encode("utf-8")
+    ).decode("ascii")
+
+    return repo.git.custom_environment(
+        GIT_CONFIG_COUNT="1",
+        GIT_CONFIG_KEY_0="http.https://github.com/.extraheader",
+        GIT_CONFIG_VALUE_0=f"AUTHORIZATION: basic {credentials}",
+    )
 
 
 def git():
-    REPO_LINK = config.UPSTREAM_REPO
-    if config.GIT_TOKEN:
-        GIT_USERNAME = REPO_LINK.split("com/")[1].split("/")[0]
-        TEMP_REPO = REPO_LINK.split("https://")[1]
-        UPSTREAM_REPO = f"https://{GIT_USERNAME}:{config.GIT_TOKEN}@{TEMP_REPO}"
-    else:
-        UPSTREAM_REPO = config.UPSTREAM_REPO
+    upstream = config.UPSTREAM_REPO.strip()
+    if not upstream.startswith(("https://", "http://", "git@")):
+        raise ValueError("UPSTREAM_REPO must be a valid Git repository URL.")
+
     try:
-        repo = Repo()
-        LOGGER(__name__).info(f"Git Client Found [VPS DEPLOYER]")
-    except GitCommandError:
-        LOGGER(__name__).info(f"Invalid Git Command")
+        repo = Repo(search_parent_directories=True)
+        LOGGER(__name__).info("Git repository found.")
+        return repo
     except InvalidGitRepositoryError:
         repo = Repo.init()
+    except GitCommandError as exc:
+        LOGGER(__name__).error(f"Git initialization failed: {exc}")
+        raise
+
+    try:
         if "origin" in repo.remotes:
             origin = repo.remote("origin")
+            # Never retain a credential-bearing remote URL.
+            origin.set_url(upstream)
         else:
-            origin = repo.create_remote("origin", UPSTREAM_REPO)
-        origin.fetch()
-        repo.create_head(
-            config.UPSTREAM_BRANCH,
-            origin.refs[config.UPSTREAM_BRANCH],
+            origin = repo.create_remote("origin", upstream)
+
+        with _authenticated_git_context(repo):
+            origin.fetch()
+
+            remote_branch = f"origin/{config.UPSTREAM_BRANCH}"
+            if remote_branch not in [ref.name for ref in repo.references]:
+                raise RuntimeError(
+                    f"Upstream branch '{config.UPSTREAM_BRANCH}' was not found."
+                )
+
+            if config.UPSTREAM_BRANCH in repo.heads:
+                local_branch = repo.heads[config.UPSTREAM_BRANCH]
+                local_branch.set_tracking_branch(
+                    repo.remote("origin").refs[config.UPSTREAM_BRANCH]
+                )
+                local_branch.checkout(force=True)
+            else:
+                local_branch = repo.create_head(
+                    config.UPSTREAM_BRANCH,
+                    repo.remote("origin").refs[config.UPSTREAM_BRANCH],
+                )
+                local_branch.set_tracking_branch(
+                    repo.remote("origin").refs[config.UPSTREAM_BRANCH]
+                )
+                local_branch.checkout(force=True)
+
+            try:
+                origin.pull(config.UPSTREAM_BRANCH)
+            except GitCommandError:
+                repo.git.reset("--hard", "FETCH_HEAD")
+
+        stdout, stderr, returncode, _pid = install_req(
+            "pip install --no-cache-dir -r requirements.txt"
         )
-        repo.heads[config.UPSTREAM_BRANCH].set_tracking_branch(
-            origin.refs[config.UPSTREAM_BRANCH]
+        if returncode:
+            LOGGER(__name__).error(
+                f"Dependency installation failed (exit {returncode}): "
+                f"{stderr or stdout}"
+            )
+            raise RuntimeError("Could not install requirements.txt.")
+
+        LOGGER(__name__).info("Upstream repository synchronized.")
+        return repo
+
+    except Exception as exc:
+        LOGGER(__name__).exception(
+            f"Unable to initialize upstream repository: "
+            f"{type(exc).__name__}: {exc}"
         )
-        repo.heads[config.UPSTREAM_BRANCH].checkout(True)
-        try:
-            repo.create_remote("origin", config.UPSTREAM_REPO)
-        except BaseException:
-            pass
-        nrs = repo.remote("origin")
-        nrs.fetch(config.UPSTREAM_BRANCH)
-        try:
-            nrs.pull(config.UPSTREAM_BRANCH)
-        except GitCommandError:
-            repo.git.reset("--hard", "FETCH_HEAD")
-        install_req("pip3 install --no-cache-dir -r requirements.txt")
-        LOGGER(__name__).info(f"Fetching updates from upstream repository...")
+        raise
