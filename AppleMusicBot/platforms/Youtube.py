@@ -36,10 +36,17 @@ class YouTubeAPI:
     @staticmethod
     def _cookie_options():
         """Load cookies from file or Base64 environment variable."""
-        cookie_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+        # Prefer an explicitly configured path; otherwise use cookies.txt
+        # from the repository root (also works in Railway's /app workdir).
+        configured_path = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+        cookie_path = (
+            Path(configured_path).expanduser()
+            if configured_path
+            else Path(__file__).resolve().parents[2] / "cookies.txt"
+        )
 
-        if cookie_file and os.path.isfile(cookie_file):
-            return {"cookiefile": cookie_file}
+        if cookie_path.is_file() and cookie_path.stat().st_size > 0:
+            return {"cookiefile": str(cookie_path.resolve())}
 
         encoded = os.getenv("YOUTUBE_COOKIES_BASE64", "").strip()
 
