@@ -116,7 +116,7 @@ if not MONGO_DB_URI:
     raise SystemExit("[CONFIG ERROR] Set MONGO_DB_URI in Railway Variables.")
 
 for name, value in (("SUPPORT_CHANNEL", SUPPORT_CHANNEL), ("SUPPORT_CHAT", SUPPORT_CHAT)):
-    if value and not re.fullmatch(r"https?://\\S+", value):
+    if value and (not value.startswith(("https://", "http://")) or any(ch.isspace() for ch in value)):
         raise SystemExit(
             f"[CONFIG ERROR] {name} must be a valid URL starting with https://"
         )
