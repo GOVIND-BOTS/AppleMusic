@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import shlex
 from typing import Tuple
 
@@ -26,46 +27,89 @@ def install_req(cmd: str) -> Tuple[str, str, int, int]:
             process.pid,
         )
 
-    return asyncio.get_event_loop().run_until_complete(install_requirements())
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(install_requirements())
+
+    raise RuntimeError(
+        "install_req() cannot run inside an active event loop; "
+        "run dependency installation during synchronous startup."
+    )
+
+
+def _git_auth_environment(repo):
+    """Return a temporary Git environment without storing credentials in origin."""
+    if not config.GIT_TOKEN:
+        return repo.git.custom_environment()
+
+    credentials = base64.b64encode(
+        f"x-access-token:{config.GIT_TOKEN}".encode("utf-8")
+    ).decode("ascii")
+
+    return repo.git.custom_environment(
+        GIT_CONFIG_COUNT="1",
+        GIT_CONFIG_KEY_0="http.extraheader",
+        GIT_CONFIG_VALUE_0=f"AUTHORIZATION: basic {credentials}",
+    )
 
 
 def git():
-    REPO_LINK = config.UPSTREAM_REPO
-    if config.GIT_TOKEN:
-        GIT_USERNAME = REPO_LINK.split("com/")[1].split("/")[0]
-        TEMP_REPO = REPO_LINK.split("https://")[1]
-        UPSTREAM_REPO = f"https://{GIT_USERNAME}:{config.GIT_TOKEN}@{TEMP_REPO}"
-    else:
-        UPSTREAM_REPO = config.UPSTREAM_REPO
+    upstream_repo = config.UPSTREAM_REPO
+    upstream_branch = config.UPSTREAM_BRANCH
+
     try:
         repo = Repo()
-        LOGGER(__name__).info(f"Git Client Found [VPS DEPLOYER]")
-    except GitCommandError:
-        LOGGER(__name__).info(f"Invalid Git Command")
+        LOGGER(__name__).info("Git repository found [VPS deployer].")
+        return
+
     except InvalidGitRepositoryError:
         repo = Repo.init()
-        if "origin" in repo.remotes:
-            origin = repo.remote("origin")
-        else:
-            origin = repo.create_remote("origin", UPSTREAM_REPO)
-        origin.fetch()
-        repo.create_head(
-            config.UPSTREAM_BRANCH,
-            origin.refs[config.UPSTREAM_BRANCH],
+    except GitCommandError as exc:
+        LOGGER(__name__).error(f"Git command failed: {exc}")
+        raise
+
+    # Always keep the saved remote URL credential-free.
+    if "origin" in repo.remotes:
+        origin = repo.remote("origin")
+        origin.set_url(upstream_repo)
+    else:
+        origin = repo.create_remote("origin", upstream_repo)
+
+    try:
+        with _git_auth_environment(repo):
+            origin.fetch(upstream_branch)
+
+            remote_ref = origin.refs[upstream_branch]
+            local_branch = (
+                repo.heads[upstream_branch]
+                if upstream_branch in repo.heads
+                else repo.create_head(upstream_branch, remote_ref)
+            )
+            local_branch.set_tracking_branch(remote_ref)
+            local_branch.checkout(True)
+
+            try:
+                origin.pull(upstream_branch)
+            except GitCommandError:
+                repo.git.reset("--hard", "FETCH_HEAD")
+
+        LOGGER(__name__).info("Fetched upstream repository successfully.")
+
+    except Exception as exc:
+        LOGGER(__name__).error(
+            "Could not fetch upstream repository: "
+            f"{type(exc).__name__}: {exc}"
         )
-        repo.heads[config.UPSTREAM_BRANCH].set_tracking_branch(
-            origin.refs[config.UPSTREAM_BRANCH]
+        raise
+
+    stdout, stderr, returncode, _ = install_req(
+        "pip3 install --no-cache-dir -r requirements.txt"
+    )
+    if returncode:
+        LOGGER(__name__).error(
+            f"Dependency installation failed: {stderr or stdout}"
         )
-        repo.heads[config.UPSTREAM_BRANCH].checkout(True)
-        try:
-            repo.create_remote("origin", config.UPSTREAM_REPO)
-        except BaseException:
-            pass
-        nrs = repo.remote("origin")
-        nrs.fetch(config.UPSTREAM_BRANCH)
-        try:
-            nrs.pull(config.UPSTREAM_BRANCH)
-        except GitCommandError:
-            repo.git.reset("--hard", "FETCH_HEAD")
-        install_req("pip3 install --no-cache-dir -r requirements.txt")
-        LOGGER(__name__).info(f"Fetching updates from upstream repository...")
+        raise RuntimeError("Could not install requirements.txt dependencies.")
+
+    LOGGER(__name__).info("Upstream dependencies installed successfully.")
