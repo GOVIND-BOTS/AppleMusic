@@ -71,6 +71,11 @@ async def init():
         )
 
         await userbot.start()
+        if not userbot._started_clients:
+            raise RuntimeError(
+                "No assistant account connected. Configure at least one valid "
+                "STRING_SESSION (or STRING_SESSION2-5) for voice-chat playback."
+            )
         LOGGER("AppleMusicBot").info("Userbot startup completed.")
 
         await AppleCall.start()
