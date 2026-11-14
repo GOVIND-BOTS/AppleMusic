@@ -291,10 +291,15 @@ async def play_commnd(
                 await AppleBot.stream_call(url)
             except NoActiveGroupCall:
                 await mystic.edit_text(_["black_9"])
-                return await app.send_message(
-                    chat_id=config.LOGGER_ID,
-                    text=_["play_17"],
-                )
+                if config.LOGGER_ID:
+                    try:
+                        await app.send_message(
+                            chat_id=config.LOGGER_ID,
+                            text=_["play_17"],
+                        )
+                    except Exception:
+                        pass
+                return
             except Exception as e:
                 return await mystic.edit_text(_["general_2"].format(type(e).__name__))
             await mystic.edit_text(_["str_2"])
@@ -648,16 +653,3 @@ async def slider_queries(client, CallbackQuery, _):
         try:
             await CallbackQuery.answer(_["playcb_2"])
         except:
-            pass
-        title, duration_min, thumbnail, vidid = await YouTube.slider(query, query_type)
-        buttons = slider_markup(_, vidid, user_id, query, query_type, cplay, fplay)
-        med = InputMediaPhoto(
-            media=thumbnail,
-            caption=_["play_10"].format(
-                title.title(),
-                duration_min,
-            ),
-        )
-        return await CallbackQuery.edit_message_media(
-            media=med, reply_markup=InlineKeyboardMarkup(buttons)
-        )
