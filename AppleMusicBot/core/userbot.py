@@ -15,7 +15,7 @@ class Userbot(Client):
             name="AnonXAss1",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            session_string=str(config.STRING1),
+            session_string=config.STRING1,
             no_updates=True,
         )
 
@@ -23,7 +23,7 @@ class Userbot(Client):
             name="AnonXAss2",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            session_string=str(config.STRING2),
+            session_string=config.STRING2,
             no_updates=True,
         )
 
@@ -31,7 +31,7 @@ class Userbot(Client):
             name="AnonXAss3",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            session_string=str(config.STRING3),
+            session_string=config.STRING3,
             no_updates=True,
         )
 
@@ -39,7 +39,7 @@ class Userbot(Client):
             name="AnonXAss4",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            session_string=str(config.STRING4),
+            session_string=config.STRING4,
             no_updates=True,
         )
 
@@ -47,7 +47,7 @@ class Userbot(Client):
             name="AnonXAss5",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
-            session_string=str(config.STRING5),
+            session_string=config.STRING5,
             no_updates=True,
         )
 
