@@ -5,7 +5,7 @@ import heroku3
 from pyrogram import filters
 
 import config
-from AppleMusicBot.core.mongo import mongodb
+from AppleMusicBot.core.mongo import mongodb, ping_mongo
 
 from .logging import LOGGER
 
@@ -16,7 +16,7 @@ _boot_ = time.time()
 
 
 def is_heroku():
-    return "heroku" in socket.getfqdn()
+    return "heroku" in socket.getfqdn().lower()
 
 
 XCB = [
@@ -28,9 +28,7 @@ XCB = [
     "git",
     "heroku",
     "push",
-    str(config.HEROKU_API_KEY),
     "https",
-    str(config.HEROKU_APP_NAME),
     "HEAD",
     "master",
 ]
@@ -39,16 +37,20 @@ XCB = [
 def dbb():
     global db
     db = {}
-    LOGGER(__name__).info(f"Local Database Initialized.")
+    LOGGER(__name__).info("Local Database Initialized.")
 
 
 async def sudo():
     global SUDOERS
+
+    # Check the database before reading or writing sudoers.
+    await ping_mongo()
+
     SUDOERS.add(config.OWNER_ID)
-    CON="\x36\x32\x38\x31\x31\x37\x38\x36\x34\x38"
     sudoersdb = mongodb.sudoers
     sudoers = await sudoersdb.find_one({"sudo": "sudo"})
-    sudoers = [] if not sudoers else sudoers["sudoers"]
+    sudoers = [] if not sudoers else sudoers.get("sudoers", [])
+
     if config.OWNER_ID not in sudoers:
         sudoers.append(config.OWNER_ID)
         await sudoersdb.update_one(
@@ -56,21 +58,32 @@ async def sudo():
             {"$set": {"sudoers": sudoers}},
             upsert=True,
         )
-    if sudoers:
-        for user_id in sudoers:
-            SUDOERS.add(user_id)
-    LOGGER(__name__).info(f"Sudoers Loaded.")
+
+    for user_id in sudoers:
+        SUDOERS.add(user_id)
+
+    LOGGER(__name__).info("Sudoers Loaded.")
 
 
 def heroku():
     global HAPP
-    if is_heroku:
-        if config.HEROKU_API_KEY and config.HEROKU_APP_NAME:
-            try:
-                Heroku = heroku3.from_key(config.HEROKU_API_KEY)
-                HAPP = Heroku.app(config.HEROKU_APP_NAME)
-                LOGGER(__name__).info(f"Heroku App Configured")
-            except BaseException:
-                LOGGER(__name__).warning(
-                    f"Please make sure your Heroku API Key and Your App name are configured correctly in the heroku."
-                )
+
+    if not is_heroku():
+        return
+
+    if not config.HEROKU_API_KEY or not config.HEROKU_APP_NAME:
+        LOGGER(__name__).warning(
+            "Heroku integration is disabled: HEROKU_API_KEY or "
+            "HEROKU_APP_NAME is missing."
+        )
+        return
+
+    try:
+        heroku_client = heroku3.from_key(config.HEROKU_API_KEY)
+        HAPP = heroku_client.app(config.HEROKU_APP_NAME)
+        LOGGER(__name__).info("Heroku App Configured.")
+    except Exception as exc:
+        LOGGER(__name__).warning(
+            "Could not configure Heroku integration: "
+            f"{type(exc).__name__}: {exc}"
+        )
