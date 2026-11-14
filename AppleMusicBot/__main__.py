@@ -7,7 +7,7 @@ import config
 from AppleMusicBot import LOGGER, app, userbot
 from AppleMusicBot.core.call import AppleBot as AppleCall
 from AppleMusicBot.core.mongo import ping_database
-from AppleMusicBot.misc import sudo
+from AppleMusicBot.misc import heroku, sudo
 from AppleMusicBot.plugins import ALL_MODULES
 from AppleMusicBot.utils.database import get_banned_users, get_gbanned
 from config import BANNED_USERS
@@ -41,9 +41,8 @@ async def shutdown():
 
 async def init():
     try:
-        # Fail early with a useful log if the database URI is invalid or
-        # the MongoDB server is unreachable.
         await ping_database()
+        heroku()
         await sudo()
 
         try:
