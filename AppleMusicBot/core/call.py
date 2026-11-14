@@ -670,22 +670,30 @@ class Call:
             await self.decorators()
             self._handlers_registered = True
 
-        try:
-            for session, client in self.clients:
-                if session:
-                    await client.start()
-                    self.started_clients.append(client)
+        self.started_clients.clear()
+        for session, client in self.clients:
+            if not session or client is None:
+                continue
 
-            LOGGER(__name__).info(
-                f"Started {len(self.started_clients)} assistant clients."
+            try:
+                await client.start()
+                self.started_clients.append(client)
+                LOGGER(__name__).info("A PyTgCalls assistant started.")
+            except Exception as exc:
+                LOGGER(__name__).exception(
+                    f"PyTgCalls assistant failed to start: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        if not self.started_clients:
+            raise RuntimeError(
+                "No PyTgCalls assistant connected successfully. "
+                "Check the configured assistant session strings."
             )
 
-        except Exception:
-            LOGGER(__name__).exception(
-                "PyTgCalls startup failed."
-            )
-            await self.stop()
-            raise
+        LOGGER(__name__).info(
+            f"Started {len(self.started_clients)} PyTgCalls assistant clients."
+        )
 
     async def stop(self):
         LOGGER(__name__).info(
