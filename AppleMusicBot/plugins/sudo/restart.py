@@ -10,6 +10,7 @@ from pyrogram import filters
 
 import config
 from AppleMusicBot import app, misc
+from AppleMusicBot.core.git import _authenticated_git_context
 from AppleMusicBot.misc import SUDOERS
 from AppleMusicBot.utils.database import (
     get_active_chats,
@@ -51,7 +52,8 @@ async def update_(client, message, _):
         return await response.edit(_["server_5"])
 
     try:
-        repo.remotes.origin.fetch(config.UPSTREAM_BRANCH)
+        with _authenticated_git_context(repo):
+            repo.remotes.origin.fetch(config.UPSTREAM_BRANCH)
     except Exception as exc:
         return await response.edit(
             f"Git fetch failed: {type(exc).__name__}: {exc}"
@@ -97,7 +99,8 @@ async def update_(client, message, _):
 
     try:
         repo.git.stash("push", "--include-untracked")
-        repo.remotes.origin.pull(config.UPSTREAM_BRANCH)
+        with _authenticated_git_context(repo):
+            repo.remotes.origin.pull(config.UPSTREAM_BRANCH)
     except Exception as exc:
         return await response.edit(
             f"Update failed: {type(exc).__name__}: {exc}"
