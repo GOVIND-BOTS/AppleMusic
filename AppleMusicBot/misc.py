@@ -19,25 +19,6 @@ def is_heroku():
     return "heroku" in socket.getfqdn().lower()
 
 
-# Kept for compatibility with the existing Heroku restart command.
-# Do not put API keys or other secrets in this list.
-XCB = [
-    "/",
-    "@",
-    ".",
-    "com",
-    ":",
-    "git",
-    "heroku",
-    "push",
-    config.HEROKU_API_KEY or "",
-    "https",
-    config.HEROKU_APP_NAME or "",
-    "HEAD",
-    "master",
-]
-
-
 def dbb():
     global db
     db = {}
@@ -45,7 +26,6 @@ def dbb():
 
 
 async def sudo():
-    global SUDOERS
     SUDOERS.add(config.OWNER_ID)
 
     sudoersdb = mongodb.sudoers
@@ -72,6 +52,7 @@ async def sudo():
 
 
 def heroku():
+    """Initialize the optional Heroku API client once at startup."""
     global HAPP
     if not is_heroku():
         return
