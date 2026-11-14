@@ -1,26 +1,35 @@
-
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import MONGO_DB_URI
 
 from ..logging import LOGGER
 
-
-LOGGER(__name__).info("Connecting to your Mongo Database...")
-
-try:
-    _mongo_async_ = AsyncIOMotorClient(MONGO_DB_URI)
-
-    
-    mongodb = _mongo_async_.Anon
-
-    
-    db = mongodb
-
-    LOGGER(__name__).info("Connected to your Mongo Database.")
-
-except Exception as e:
-    LOGGER(__name__).error(
-        f"Failed to connect to your Mongo Database: {e}"
+if not MONGO_DB_URI:
+    raise RuntimeError(
+        "MONGO_DB_URI is missing. Add it to your Railway environment variables."
     )
-    raise
+
+LOGGER(__name__).info("Initializing MongoDB client...")
+
+_mongo_async_ = AsyncIOMotorClient(
+    MONGO_DB_URI,
+    serverSelectionTimeoutMS=10000,
+    connectTimeoutMS=10000,
+    retryWrites=True,
+)
+
+# Keep the existing database name so current collections remain unchanged.
+mongodb = _mongo_async_["Anon"]
+db = mongodb
+
+
+async def ping_database():
+    """Verify MongoDB connectivity before loading bot data."""
+    try:
+        await _mongo_async_.admin.command("ping")
+        LOGGER(__name__).info("MongoDB connection verified successfully.")
+    except Exception as exc:
+        LOGGER(__name__).exception(
+            f"MongoDB connection check failed: {type(exc).__name__}: {exc}"
+        )
+        raise

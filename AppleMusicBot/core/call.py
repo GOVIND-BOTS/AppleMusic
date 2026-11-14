@@ -60,45 +60,23 @@ async def _clear_(chat_id):
 
 class Call:
     def __init__(self):
-        self.userbot1 = Client(
-            name="AnonXAss1",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=str(config.STRING1),
-        )
-        self.one = PyTgCalls(self.userbot1, cache_duration=100)
+        def make_call_client(name, session):
+            if not session or not str(session).strip():
+                return None, None
 
-        self.userbot2 = Client(
-            name="AnonXAss2",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=str(config.STRING2),
-        )
-        self.two = PyTgCalls(self.userbot2, cache_duration=100)
+            user_client = Client(
+                name=name,
+                api_id=config.API_ID,
+                api_hash=config.API_HASH,
+                session_string=str(session).strip(),
+            )
+            return user_client, PyTgCalls(user_client, cache_duration=100)
 
-        self.userbot3 = Client(
-            name="AnonXAss3",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=str(config.STRING3),
-        )
-        self.three = PyTgCalls(self.userbot3, cache_duration=100)
-
-        self.userbot4 = Client(
-            name="AnonXAss4",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=str(config.STRING4),
-        )
-        self.four = PyTgCalls(self.userbot4, cache_duration=100)
-
-        self.userbot5 = Client(
-            name="AnonXAss5",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=str(config.STRING5),
-        )
-        self.five = PyTgCalls(self.userbot5, cache_duration=100)
+        self.userbot1, self.one = make_call_client("AnonXAss1", config.STRING1)
+        self.userbot2, self.two = make_call_client("AnonXAss2", config.STRING2)
+        self.userbot3, self.three = make_call_client("AnonXAss3", config.STRING3)
+        self.userbot4, self.four = make_call_client("AnonXAss4", config.STRING4)
+        self.userbot5, self.five = make_call_client("AnonXAss5", config.STRING5)
 
         self.clients = [
             (config.STRING1, self.one),
@@ -692,22 +670,30 @@ class Call:
             await self.decorators()
             self._handlers_registered = True
 
-        try:
-            for session, client in self.clients:
-                if session:
-                    await client.start()
-                    self.started_clients.append(client)
+        self.started_clients.clear()
+        for session, client in self.clients:
+            if not session or client is None:
+                continue
 
-            LOGGER(__name__).info(
-                f"Started {len(self.started_clients)} assistant clients."
+            try:
+                await client.start()
+                self.started_clients.append(client)
+                LOGGER(__name__).info("A PyTgCalls assistant started.")
+            except Exception as exc:
+                LOGGER(__name__).exception(
+                    f"PyTgCalls assistant failed to start: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        if not self.started_clients:
+            raise RuntimeError(
+                "No PyTgCalls assistant connected successfully. "
+                "Check the configured assistant session strings."
             )
 
-        except Exception:
-            LOGGER(__name__).exception(
-                "PyTgCalls startup failed."
-            )
-            await self.stop()
-            raise
+        LOGGER(__name__).info(
+            f"Started {len(self.started_clients)} PyTgCalls assistant clients."
+        )
 
     async def stop(self):
         LOGGER(__name__).info(

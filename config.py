@@ -6,68 +6,72 @@ from pyrogram import filters
 
 load_dotenv()
 
-# Get this value from my.telegram.org/apps
-API_ID = int(getenv("API_ID"))
-API_HASH = getenv("API_HASH")
 
-# Get your token from @BotFather on Telegram.
-BOT_TOKEN = getenv("BOT_TOKEN")
+def _int_env(name, default):
+    value = getenv(name)
+    if value in (None, ""):
+        return int(default)
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"[CONFIG ERROR] {name} must be an integer.") from exc
 
-# Get your mongo url from cloud.mongodb.com
-MONGO_DB_URI = getenv("MONGO_DB_URI", None)
 
-DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 300))
+def _bool_env(name, default=False):
+    value = getenv(name)
+    if value is None:
+        return bool(default)
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
-# Chat id of a group for logging bot's activities
-LOGGER_ID = int(getenv("LOGGER_ID", "").strip() or "0")
 
-#  Telegram by /id
-OWNER_ID = int(getenv("OWNER_ID", 8250224070))
+# Telegram API credentials: https://my.telegram.org/apps
+API_ID = _int_env("API_ID", 0)
+API_HASH = getenv("API_HASH", "").strip()
+BOT_TOKEN = getenv("BOT_TOKEN", "").strip()
 
-## Fill these variables if you're deploying on heroku.
-# Your heroku app name
+# MongoDB connection string
+MONGO_DB_URI = getenv("MONGO_DB_URI", "").strip()
+
+DURATION_LIMIT_MIN = _int_env("DURATION_LIMIT", 300)
+DURATION_LIMIT = DURATION_LIMIT_MIN * 60
+
+LOGGER_ID = _int_env("LOGGER_ID", 0)
+OWNER_ID = _int_env("OWNER_ID", 8250224070)
+
+# Heroku deployment credentials (optional)
 HEROKU_APP_NAME = getenv("HEROKU_APP_NAME")
-# Get it from http://dashboard.heroku.com/account
 HEROKU_API_KEY = getenv("HEROKU_API_KEY")
 
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
     "https://github.com/GOVIND-BOTS/AppleMusic",
-)
-UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main")
-GIT_TOKEN = getenv(
-    "GIT_TOKEN", None
-)  # Fill this variable if your upstream repository is private
+).strip()
+UPSTREAM_BRANCH = getenv("UPSTREAM_BRANCH", "main").strip() or "main"
+GIT_TOKEN = getenv("GIT_TOKEN")
 
-SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/GOVIND_USERBOT_SUPPORT")
-SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/GOVIND_BOTS")
+SUPPORT_CHANNEL = getenv(
+    "SUPPORT_CHANNEL", "https://t.me/GOVIND_USERBOT_SUPPORT"
+).strip()
+SUPPORT_CHAT = getenv(
+    "SUPPORT_CHAT", "https://t.me/GOVIND_BOTS"
+).strip()
 
-# Set this to True if you want the assistant to automatically leave chats after an interval
-AUTO_LEAVING_ASSISTANT = bool(getenv("AUTO_LEAVING_ASSISTANT", True))
+AUTO_LEAVING_ASSISTANT = _bool_env("AUTO_LEAVING_ASSISTANT", True)
 
+# Spotify API credentials (optional)
+SPOTIFY_CLIENT_ID = getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET")
 
-# Get this credentials from https://developer.spotify.com/dashboard
-SPOTIFY_CLIENT_ID = getenv("SPOTIFY_CLIENT_ID", None)
-SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET", None)
+PLAYLIST_FETCH_LIMIT = _int_env("PLAYLIST_FETCH_LIMIT", 25)
+TG_AUDIO_FILESIZE_LIMIT = _int_env("TG_AUDIO_FILESIZE_LIMIT", 204857600)
+TG_VIDEO_FILESIZE_LIMIT = _int_env("TG_VIDEO_FILESIZE_LIMIT", 2073741824)
 
-
-# Maximum limit for fetching playlist's track from youtube, spotify, apple links.
-PLAYLIST_FETCH_LIMIT = int(getenv("PLAYLIST_FETCH_LIMIT", 25))
-
-
-# Telegram audio and video file size limit (in bytes)
-TG_AUDIO_FILESIZE_LIMIT = int(getenv("TG_AUDIO_FILESIZE_LIMIT", 204857600))
-TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", 2073741824))
-# Checkout https://www.gbmb.org/mb-to-bytes for converting mb to bytes
-
-
-# Get your pyrogram v2 session from @StringFatherBot on Telegram
-STRING1 = getenv("STRING_SESSION", None)
-STRING2 = getenv("STRING_SESSION2", None)
-STRING3 = getenv("STRING_SESSION3", None)
-STRING4 = getenv("STRING_SESSION4", None)
-STRING5 = getenv("STRING_SESSION5", None)
-
+# Up to five optional Pyrogram user sessions
+STRING1 = getenv("STRING_SESSION")
+STRING2 = getenv("STRING_SESSION2")
+STRING3 = getenv("STRING_SESSION3")
+STRING4 = getenv("STRING_SESSION4")
+STRING5 = getenv("STRING_SESSION5")
 
 BANNED_USERS = filters.user()
 adminlist = {}
@@ -76,9 +80,9 @@ votemode = {}
 autoclean = []
 confirmer = {}
 
-
-START_IMG_URL = ["https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg"]
-    
+START_IMG_URL = [
+    "https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg"
+]
 PING_IMG_URL = getenv(
     "PING_IMG_URL", "https://mallucampaign.in/images/img_1692101295.jpg"
 )
@@ -94,23 +98,25 @@ SPOTIFY_ALBUM_IMG_URL = "https://graph.org/file/0bb6f36796d496b4254ff.jpg"
 SPOTIFY_PLAYLIST_IMG_URL = "https://graph.org/file/0bb6f36796d496b4254ff.jpg"
 
 
-
 def time_to_seconds(time):
     stringt = str(time)
-    return sum(int(x) * 60**i for i, x in enumerate(reversed(stringt.split(":"))))
+    return sum(
+        int(part) * 60**index
+        for index, part in enumerate(reversed(stringt.split(":")))
+    )
 
 
-DURATION_LIMIT = int(time_to_seconds(f"{DURATION_LIMIT_MIN}:360"))
+if API_ID <= 0:
+    raise SystemExit("[CONFIG ERROR] Set a valid numeric API_ID in Railway Variables.")
+if not API_HASH:
+    raise SystemExit("[CONFIG ERROR] Set API_HASH in Railway Variables.")
+if not BOT_TOKEN:
+    raise SystemExit("[CONFIG ERROR] Set BOT_TOKEN in Railway Variables.")
+if not MONGO_DB_URI:
+    raise SystemExit("[CONFIG ERROR] Set MONGO_DB_URI in Railway Variables.")
 
-
-if SUPPORT_CHANNEL:
-    if not re.match("(?:http|https)://", SUPPORT_CHANNEL):
+for name, value in (("SUPPORT_CHANNEL", SUPPORT_CHANNEL), ("SUPPORT_CHAT", SUPPORT_CHAT)):
+    if value and (not value.startswith(("https://", "http://")) or any(ch.isspace() for ch in value)):
         raise SystemExit(
-            "[ERROR] - Your SUPPORT_CHANNEL url is wrong. Please ensure that it starts with https://"
-        )
-
-if SUPPORT_CHAT:
-    if not re.match("(?:http|https)://", SUPPORT_CHAT):
-        raise SystemExit(
-            "[ERROR] - Your SUPPORT_CHAT url is wrong. Please ensure that it starts with https://"
+            f"[CONFIG ERROR] {name} must be a valid URL starting with https://"
         )
