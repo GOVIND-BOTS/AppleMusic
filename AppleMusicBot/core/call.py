@@ -300,8 +300,14 @@ class Call:
         await assistant.change_stream(chat_id, stream)
 
     async def stream_call(self, link):
+        # LOGGER_ID is optional. When it is not configured, let the actual
+        # target voice chat validate and start the stream instead of failing
+        # every M3U8/index playback request here.
         if not config.LOGGER_ID:
-            raise AssistantErr("LOGGER_ID is not configured.")
+            LOGGER(__name__).info(
+                "LOGGER_ID is not configured; skipping the optional stream probe."
+            )
+            return
 
         assistant = await group_assistant(self, config.LOGGER_ID)
 
