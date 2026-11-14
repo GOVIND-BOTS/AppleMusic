@@ -6,7 +6,7 @@ from config import LOGGER_ID
 
 
 async def play_logs(message, streamtype):
-    if await is_on_off(2):
+    if LOGGER_ID and await is_on_off(2):
         logger_text = f"""
 <b>{app.mention} ᴘʟᴀʏ ʟᴏɢ</b>
 
