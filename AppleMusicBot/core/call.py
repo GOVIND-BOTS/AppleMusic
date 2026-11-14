@@ -60,45 +60,23 @@ async def _clear_(chat_id):
 
 class Call:
     def __init__(self):
-        self.userbot1 = Client(
-            name="AnonXAss1",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=config.STRING1,
-        )
-        self.one = PyTgCalls(self.userbot1, cache_duration=100)
+        def make_call_client(name, session):
+            if not session or not str(session).strip():
+                return None, None
 
-        self.userbot2 = Client(
-            name="AnonXAss2",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=config.STRING2,
-        )
-        self.two = PyTgCalls(self.userbot2, cache_duration=100)
+            user_client = Client(
+                name=name,
+                api_id=config.API_ID,
+                api_hash=config.API_HASH,
+                session_string=str(session).strip(),
+            )
+            return user_client, PyTgCalls(user_client, cache_duration=100)
 
-        self.userbot3 = Client(
-            name="AnonXAss3",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=config.STRING3,
-        )
-        self.three = PyTgCalls(self.userbot3, cache_duration=100)
-
-        self.userbot4 = Client(
-            name="AnonXAss4",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=config.STRING4,
-        )
-        self.four = PyTgCalls(self.userbot4, cache_duration=100)
-
-        self.userbot5 = Client(
-            name="AnonXAss5",
-            api_id=config.API_ID,
-            api_hash=config.API_HASH,
-            session_string=config.STRING5,
-        )
-        self.five = PyTgCalls(self.userbot5, cache_duration=100)
+        self.userbot1, self.one = make_call_client("AnonXAss1", config.STRING1)
+        self.userbot2, self.two = make_call_client("AnonXAss2", config.STRING2)
+        self.userbot3, self.three = make_call_client("AnonXAss3", config.STRING3)
+        self.userbot4, self.four = make_call_client("AnonXAss4", config.STRING4)
+        self.userbot5, self.five = make_call_client("AnonXAss5", config.STRING5)
 
         self.clients = [
             (config.STRING1, self.one),
