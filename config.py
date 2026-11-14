@@ -119,7 +119,7 @@ def time_to_seconds(time):
     )
 
 
-DURATION_LIMIT = int(time_to_seconds(f"{DURATION_LIMIT_MIN}:360"))
+DURATION_LIMIT = DURATION_LIMIT_MIN * 60
 
 for setting_name, setting_value in (
     ("SUPPORT_CHANNEL", SUPPORT_CHANNEL),
