@@ -7,7 +7,6 @@ from AppleMusicBot import app
 from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.logging import LOGGER
 from AppleMusicBot.utils.sys import bot_sys_stats
-from AppleMusicBot.utils.inline import supp_markup
 
 
 @app.on_message(filters.command(["ping", "alive"]))
@@ -33,7 +32,6 @@ async def ping_com(client, message: Message):
             f"Latency: {latency:.2f} ms\n"
             f"Uptime: {up}\nCPU: {cpu}\nRAM: {ram}\nDisk: {disk}\n"
             f"Voice engine: {pytgping}",
-            reply_markup=supp_markup(None),
             disable_web_page_preview=True,
         )
     except Exception as exc:
