@@ -8,43 +8,39 @@ from AppleMusicBot.logging import LOGGER
 from AppleMusicBot.utils.sys import bot_sys_stats
 
 
-@app.on_message(filters.command(["ping", "alive"]))
-async def ping_com(client, message: Message):
-    LOGGER(__name__).info(f"Ping command received from {message.from_user.id if message.from_user else 'Unknown'} in chat {message.chat.id}")
+@app.on_message(filters.command(["ping", "alive"]) & ~filters.forwarded)
+async def ping_com(_, message: Message):
+    LOGGER(__name__).info(f"PING TRIGGERED | User: {message.from_user.id if message.from_user else 'N/A'} | Chat: {message.chat.id}")
     
     try:
-        started_at = datetime.now()
-        response = await message.reply_text("🏓 Pong! Checking...")
-        
+        start = datetime.now()
+        m = await message.reply_text("🏓 Pong...")
+
         try:
-            pytgping = await AppleBot.ping()
-        except Exception as exc:
-            LOGGER(__name__).warning(f"PyTgCalls ping failed: {exc}")
-            pytgping = "N/A"
-            
+            pytg = await AppleBot.ping()
+        except:
+            pytg = "N/A"
+
         try:
             up, cpu, ram, disk = await bot_sys_stats()
-        except Exception as exc:
-            LOGGER(__name__).warning(f"System stats failed: {exc}")
-            up, cpu, ram, disk = "N/A", "N/A", "N/A", "N/A"
-            
-        latency = (datetime.now() - started_at).total_seconds() * 1000
-        
-        await response.edit_text(
-            f"🏓 **PONG!**\n\n"
-            f"**Bot:** {app.mention}\n"
+        except:
+            up = cpu = ram = disk = "N/A"
+
+        end = datetime.now()
+        latency = (end - start).total_seconds() * 1000
+
+        await m.edit_text(
+            f"🏓 **PONG**\n\n"
             f"**Latency:** `{latency:.2f} ms`\n"
             f"**Uptime:** `{up}`\n"
             f"**CPU:** `{cpu}`\n"
             f"**RAM:** `{ram}`\n"
             f"**Disk:** `{disk}`\n"
-            f"**Voice Engine:** `{pytgping}`",
-            disable_web_page_preview=True,
+            f"**PyTgCalls:** `{pytg}`"
         )
-        
     except Exception as e:
-        LOGGER(__name__).exception("Ping command completely failed")
+        LOGGER(__name__).error(f"Ping Error: {e}")
         try:
-            await message.reply_text(f"❌ Ping Error: `{type(e).__name__}: {str(e)[:200]}`")
+            await message.reply_text(f"Error: `{e}`")
         except:
             pass
