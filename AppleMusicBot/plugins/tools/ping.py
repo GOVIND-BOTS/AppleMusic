@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from pyrogram import filters
 from pyrogram.types import Message
 
@@ -11,34 +10,41 @@ from AppleMusicBot.utils.sys import bot_sys_stats
 
 @app.on_message(filters.command(["ping", "alive"]))
 async def ping_com(client, message: Message):
-    started_at = datetime.now()
-    # Reply immediately; diagnostics must not depend on MongoDB or language lookup.
+    LOGGER(__name__).info(f"Ping command received from {message.from_user.id if message.from_user else 'Unknown'} in chat {message.chat.id}")
+    
     try:
-        response = await message.reply_text("🏓 Pong! Checking bot status…")
+        started_at = datetime.now()
+        response = await message.reply_text("🏓 Pong! Checking...")
+        
         try:
             pytgping = await AppleBot.ping()
         except Exception as exc:
-            LOGGER(__name__).warning("PyTgCalls ping failed: %s: %s", type(exc).__name__, exc)
+            LOGGER(__name__).warning(f"PyTgCalls ping failed: {exc}")
             pytgping = "N/A"
+            
         try:
             up, cpu, ram, disk = await bot_sys_stats()
         except Exception as exc:
-            LOGGER(__name__).warning("System stats failed: %s: %s", type(exc).__name__, exc)
+            LOGGER(__name__).warning(f"System stats failed: {exc}")
             up, cpu, ram, disk = "N/A", "N/A", "N/A", "N/A"
+            
         latency = (datetime.now() - started_at).total_seconds() * 1000
+        
         await response.edit_text(
-            "🏓 PONG!\n\n"
-            f"Bot: {app.mention}\n"
-            f"Latency: {latency:.2f} ms\n"
-            f"Uptime: {up}\nCPU: {cpu}\nRAM: {ram}\nDisk: {disk}\n"
-            f"Voice engine: {pytgping}",
+            f"🏓 **PONG!**\n\n"
+            f"**Bot:** {app.mention}\n"
+            f"**Latency:** `{latency:.2f} ms`\n"
+            f"**Uptime:** `{up}`\n"
+            f"**CPU:** `{cpu}`\n"
+            f"**RAM:** `{ram}`\n"
+            f"**Disk:** `{disk}`\n"
+            f"**Voice Engine:** `{pytgping}`",
             disable_web_page_preview=True,
         )
-    except Exception as exc:
-        LOGGER(__name__).exception("Ping command failed")
+        
+    except Exception as e:
+        LOGGER(__name__).exception("Ping command completely failed")
         try:
-            await message.reply_text(
-                f"Ping handler error: {type(exc).__name__}: {str(exc)[:250]}"
-            )
-        except Exception:
+            await message.reply_text(f"❌ Ping Error: `{type(e).__name__}: {str(e)[:200]}`")
+        except:
             pass
