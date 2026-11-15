@@ -11,6 +11,7 @@ from pyrogram.errors import (
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from AppleMusicBot import YouTube, app
+from AppleMusicBot.logging import LOGGER
 from AppleMusicBot.misc import SUDOERS
 from AppleMusicBot.utils.database import (
     get_assistant,
@@ -29,8 +30,12 @@ links = {}
 
 
 def PlayWrapper(command):
-    async def wrapper(client, message):
-        language = await get_lang(message.chat.id)
+    async def _run_wrapper(client, message):
+        try:
+            language = await get_lang(message.chat.id)
+        except Exception as exc:
+            LOGGER(__name__).warning("Play language lookup failed: %s: %s", type(exc).__name__, exc)
+            language = "en"
         _ = get_string(language)
 
         # Anonymous admin protection
@@ -52,8 +57,15 @@ def PlayWrapper(command):
 
         # is_maintenance() returns False when maintenance mode is ON.
         # Block regular users only while maintenance mode is actually enabled.
-        if await is_maintenance() is False:
-            if message.from_user.id not in SUDOERS:
+        try:
+            maintenance_enabled = await is_maintenance() is False
+        except Exception as exc:
+            # Fail open if the optional maintenance lookup/database is unavailable.
+            LOGGER(__name__).warning("Play maintenance lookup failed: %s: %s", type(exc).__name__, exc)
+            maintenance_enabled = False
+
+        if maintenance_enabled:
+            if message.from_user and message.from_user.id not in SUDOERS:
                 return await message.reply_text(
                     text=(
                         f"{app.mention} is under maintenance. "
@@ -293,5 +305,17 @@ def PlayWrapper(command):
             url,
             fplay,
         )
+
+    async def wrapper(client, message):
+        try:
+            return await _run_wrapper(client, message)
+        except Exception as exc:
+            LOGGER(__name__).exception("Play command wrapper failed")
+            try:
+                await message.reply_text(
+                    f"Play command error: {type(exc).__name__}: {str(exc)[:250]}"
+                )
+            except Exception:
+                pass
 
     return wrapper
