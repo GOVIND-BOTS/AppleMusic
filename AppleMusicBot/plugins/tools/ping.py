@@ -14,15 +14,38 @@ from config import BANNED_USERS, PING_IMG_URL
 @app.on_message(filters.command(["ping", "alive"]) & ~BANNED_USERS)
 @language
 async def ping_com(client, message: Message, _):
-    start = datetime.now()
+    started_at = datetime.now()
+
     response = await message.reply_photo(
         photo=PING_IMG_URL,
         caption=_["ping_1"].format(app.mention),
     )
-    pytgping = await AppleBot.ping()
-    UP, CPU, RAM, DISK = await bot_sys_stats()
-    resp = (datetime.now() - start).microseconds / 1000
-    await response.edit_text(
-        _["ping_2"].format(resp, app.mention, UP, RAM, CPU, DISK, pytgping),
+
+    # PyTgCalls ping is optional: report N/A instead of breaking /ping
+    # when the installed PyTgCalls build does not expose a ping value.
+    try:
+        pytgping = await AppleBot.ping()
+    except Exception:
+        pytgping = "N/A"
+
+    try:
+        UP, CPU, RAM, DISK = await bot_sys_stats()
+    except Exception:
+        UP, CPU, RAM, DISK = "N/A", "N/A", "N/A", "N/A"
+
+    # Include whole seconds as well as microseconds for accurate latency.
+    resp = (datetime.now() - started_at).total_seconds() * 1000
+
+    # A photo message must be edited through its caption, not edit_text().
+    await response.edit_caption(
+        caption=_["ping_2"].format(
+            round(resp, 2),
+            app.mention,
+            UP,
+            RAM,
+            CPU,
+            DISK,
+            pytgping,
+        ),
         reply_markup=supp_markup(_),
     )
