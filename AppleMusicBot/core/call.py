@@ -4,7 +4,6 @@ import os
 from datetime import datetime, timedelta
 from typing import Union
 
-from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup
 
 from pytgcalls import PyTgCalls, StreamType
@@ -22,7 +21,7 @@ from pytgcalls.types.input_stream.quality import (
 from pytgcalls.types.stream import StreamAudioEnded
 
 import config
-from AppleMusicBot import LOGGER, YouTube, app
+from AppleMusicBot import LOGGER, YouTube, app, userbot
 from AppleMusicBot.misc import db
 from AppleMusicBot.utils.database import (
     add_active_chat,
@@ -60,30 +59,31 @@ async def _clear_(chat_id):
 
 class Call:
     def __init__(self):
-        def make_call_client(name, session):
-            if not session or not str(session).strip():
+        # Reuse the already-authenticated assistant clients from core.userbot.
+        # Creating a second Pyrogram Client from the same session string can
+        # open duplicate MTProto connections for one Telegram account and
+        # cause unstable transport/session timeouts.
+        def make_call_client(user_client):
+            if user_client is None:
                 return None, None
 
-            user_client = Client(
-                name=name,
-                api_id=config.API_ID,
-                api_hash=config.API_HASH,
-                session_string=str(session).strip(),
+            return user_client, PyTgCalls(
+                user_client,
+                cache_duration=100,
             )
-            return user_client, PyTgCalls(user_client, cache_duration=100)
 
-        self.userbot1, self.one = make_call_client("AnonXAss1", config.STRING1)
-        self.userbot2, self.two = make_call_client("AnonXAss2", config.STRING2)
-        self.userbot3, self.three = make_call_client("AnonXAss3", config.STRING3)
-        self.userbot4, self.four = make_call_client("AnonXAss4", config.STRING4)
-        self.userbot5, self.five = make_call_client("AnonXAss5", config.STRING5)
+        self.userbot1, self.one = make_call_client(userbot.one)
+        self.userbot2, self.two = make_call_client(userbot.two)
+        self.userbot3, self.three = make_call_client(userbot.three)
+        self.userbot4, self.four = make_call_client(userbot.four)
+        self.userbot5, self.five = make_call_client(userbot.five)
 
         self.clients = [
-            (config.STRING1, self.one),
-            (config.STRING2, self.two),
-            (config.STRING3, self.three),
-            (config.STRING4, self.four),
-            (config.STRING5, self.five),
+            (self.userbot1, self.one),
+            (self.userbot2, self.two),
+            (self.userbot3, self.three),
+            (self.userbot4, self.four),
+            (self.userbot5, self.five),
         ]
 
         self.started_clients = []
