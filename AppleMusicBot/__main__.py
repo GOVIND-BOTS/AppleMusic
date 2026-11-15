@@ -1,4 +1,11 @@
 import asyncio
+
+# Create and install the application's event loop BEFORE importing any module
+# that constructs Pyrogram/Kurigram or PyTgCalls clients. Those clients bind
+# themselves to the current loop during construction.
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 import importlib
 
 from pyrogram import idle
@@ -94,10 +101,6 @@ async def init():
 
 
 if __name__ == "__main__":
-    # Pyrogram Client objects are created during module imports above.
-    # Reuse their default event loop instead of creating a different loop;
-    # PyTgCalls must operate on the same loop as its bound Pyrogram client.
-    loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(init())
     except KeyboardInterrupt:
@@ -105,3 +108,4 @@ if __name__ == "__main__":
     finally:
         if not loop.is_closed():
             loop.close()
+        asyncio.set_event_loop(None)
