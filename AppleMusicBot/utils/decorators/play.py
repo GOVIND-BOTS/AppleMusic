@@ -50,8 +50,9 @@ def PlayWrapper(command):
                 reply_markup=upl,
             )
 
-        # Maintenance check (FIXED)
-        if await is_maintenance() is True:
+        # is_maintenance() returns False when maintenance mode is ON.
+        # Block regular users only while maintenance mode is actually enabled.
+        if await is_maintenance() is False:
             if message.from_user.id not in SUDOERS:
                 return await message.reply_text(
                     text=(
