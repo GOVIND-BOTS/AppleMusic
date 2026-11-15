@@ -103,9 +103,9 @@ class AppleBot(Client):
             await self.send_message(
                 chat_id=logger_id,
                 text=(
-                    f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b></u>\\n\\n"
-                    f"ɪᴅ : <code>{self.id}</code>\\n"
-                    f"ɴᴀᴍᴇ : {self.name}\\n"
+                    f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b></u>\n\n"
+                    f"ɪᴅ : <code>{self.id}</code>\n"
+                    f"ɴᴀᴍᴇ : {self.name}\n"
                     f"ᴜsᴇʀɴᴀᴍᴇ : @{self.username}"
                 ),
             )
