@@ -666,3 +666,19 @@ async def slider_queries(client, CallbackQuery, _):
         return await CallbackQuery.edit_message_media(
             media=med, reply_markup=InlineKeyboardMarkup(buttons)
         )
+
+@app.on_message(
+    filters.command(
+        [
+            "play", "vplay", "cplay", "cvplay",
+            "playforce", "vplayforce", "cplayforce", "cvplayforce",
+        ]
+    )
+    & filters.private
+    & ~BANNED_USERS
+)
+async def play_private_notice(client, message: Message):
+    await message.reply_text(
+        "🎵 Music playback commands work in groups. Add me to your group, "
+        "start a voice chat, then use /play followed by a song name."
+    )
