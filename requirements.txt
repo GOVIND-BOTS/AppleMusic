@@ -16,6 +16,7 @@ Faker
 pydub
 pycountry
 heroku3
+six>=1.16.0
 apscheduler
 
 # Database
