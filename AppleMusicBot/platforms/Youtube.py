@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 import binascii
 import os
 import re
@@ -143,16 +144,18 @@ class YouTubeAPI:
             # Music playback needs an audio-only format; YouTube may not expose
             # a combined best video+audio format for every client/video.
             "format": "bestaudio/best",
-            # Prefer a client that still exposes direct audio formats to yt-dlp.
-            # YouTube's default web/SABR responses can expose metadata but no
-            # downloadable formats, which causes "Requested format is not available".
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["android_vr"],
-                }
-            },
+            # Let current yt-dlp choose its maintained YouTube clients.
+            # Hard-coding android_vr causes missing-format failures on newer
+            # YouTube player versions. Enable the Node runtime installed in Docker.
+            "js_runtimes": {"node": {}},
         }
-        options.update(cls._cookie_options())
+        # Invalid or expired optional cookies must not disable YouTube playback.
+        try:
+            options.update(cls._cookie_options())
+        except (OSError, ValueError, UnicodeError) as exc:
+            logging.getLogger(__name__).warning(
+                "Ignoring invalid YouTube cookies (%s); trying without cookies.", exc
+            )
         options.update(kwargs)
         return options
 
