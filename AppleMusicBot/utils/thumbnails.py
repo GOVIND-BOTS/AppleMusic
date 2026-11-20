@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 import aiohttp
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 from youtubesearchpython.__future__ import VideosSearch
 
 from AppleMusicBot import app
@@ -80,7 +80,7 @@ async def _avatar(user_id):
 
 async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
     """Build the branded anime-style Now Playing thumbnail."""
-    output = CACHE / f"{videoid}_{user_id}_v3.png"
+    output = CACHE / f"{videoid}_{user_id}_v4.png"
     if output.is_file():
         return str(output)
 
@@ -103,15 +103,29 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
         await _download(thumb_url.split("?")[0], cover_path)
         cover = Image.open(cover_path).convert("RGB")
 
+        canvas = None
         if TEMPLATE.is_file():
-            canvas = ImageOps.fit(
-                Image.open(TEMPLATE).convert("RGBA"), (1280, 720),
-                method=Image.Resampling.LANCZOS
-            )
-        else:
-            # Fallback keeps play working if the optional template image is missing.
-            canvas = ImageOps.fit(cover, (1280, 720)).convert("RGBA")
-            canvas = canvas.filter(ImageFilter.GaussianBlur(22))
+            try:
+                with Image.open(TEMPLATE) as template_image:
+                    template_image.load()
+                    canvas = ImageOps.fit(
+                        template_image.convert("RGBA"), (1280, 720),
+                        method=Image.Resampling.LANCZOS
+                    )
+            except (OSError, ValueError) as template_error:
+                LOGGER(__name__).warning(
+                    "Invalid Now Playing template %s; using generated background: %s",
+                    TEMPLATE, template_error
+                )
+
+        if canvas is None:
+            # A missing/corrupt optional template must never break song thumbnails.
+            background = ImageOps.fit(cover, (1280, 720)).convert("RGB")
+            background = background.filter(ImageFilter.GaussianBlur(30))
+            background = ImageEnhance.Brightness(background).enhance(0.38)
+            canvas = background.convert("RGBA")
+            overlay = Image.new("RGBA", canvas.size, (12, 10, 24, 105))
+            canvas.alpha_composite(overlay)
 
         # Main circle: video/song cover. Small circle: requester Telegram DP.
         _circle(canvas, cover, 470, 145, 352, ring=(255, 255, 255, 255), border=5)
