@@ -25,6 +25,26 @@ def _font(size, bold=False):
         return ImageFont.load_default()
 
 
+def _rainbow_text(draw, text, y, font):
+    palette = [
+        (255, 70, 115, 255),
+        (255, 170, 55, 255),
+        (255, 245, 105, 255),
+        (80, 235, 160, 255),
+        (80, 175, 255, 255),
+        (205, 115, 255, 255),
+    ]
+    widths = [draw.textlength(char, font=font) for char in text]
+    x = (1280 - sum(widths)) / 2
+    for index, (char, width) in enumerate(zip(text, widths)):
+        draw.text(
+            (x, y), char, font=font, anchor="lm",
+            fill=palette[index % len(palette)],
+            stroke_width=3, stroke_fill=(10, 10, 18, 255),
+        )
+        x += width
+
+
 def _circle(canvas, source, x, y, size, ring=(255, 255, 255, 255), border=5):
     source = ImageOps.fit(source.convert("RGB"), (size, size), method=Image.Resampling.LANCZOS)
     mask = Image.new("L", (size, size), 0)
@@ -100,12 +120,13 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
                 ring=(70, 245, 155, 255), border=5)
 
         draw = ImageDraw.Draw(canvas)
-        bot_name = (getattr(app, "name", None) or "ADISHA MUSIC").upper()[:26]
-        # Multicolour title with a dark outline for readability.
-        draw.text((640, 58), bot_name, font=_font(46, True), anchor="mm",
-                  fill=(255, 90, 145, 255), stroke_width=3, stroke_fill=(10, 10, 18, 255))
-        draw.text((640, 58), bot_name, font=_font(46, True), anchor="mm",
-                  fill=(255, 220, 95, 255), stroke_width=1, stroke_fill=(10, 10, 18, 255))
+        bot = getattr(app, "me", None)
+        bot_name = (
+            getattr(bot, "first_name", None)
+            or getattr(app, "name", None)
+            or "ADISHA MUSIC"
+        ).upper()[:26]
+        _rainbow_text(draw, bot_name, 58, _font(46, True))
         draw.text((640, 582), "NOW PLAYING", font=_font(22, True), anchor="mm",
                   fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 230))
         short_title = title if len(title) <= 44 else title[:41].rstrip() + "..."
