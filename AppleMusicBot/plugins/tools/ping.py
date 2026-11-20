@@ -60,6 +60,12 @@ async def ping_com(_, message: Message):
             f"**Disk:** `{disk}`\n"
             f"**PyTgCalls:** `{pytg}`"
         )
+        LOGGER(__name__).info(
+            "PING RESPONSE SENT | User: %s | Chat: %s | Latency: %.2f ms",
+            message.from_user.id if message.from_user else "N/A",
+            message.chat.id,
+            latency,
+        )
     except Exception:
         LOGGER(__name__).exception("Ping handler failed.")
         try:
