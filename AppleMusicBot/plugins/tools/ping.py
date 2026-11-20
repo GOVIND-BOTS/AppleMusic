@@ -15,15 +15,18 @@ from AppleMusicBot.utils.sys import bot_sys_stats
 async def incoming_message_probe(_, message: Message):
     sender = message.from_user.id if message.from_user else "unknown"
     chat_id = message.chat.id if message.chat else "unknown"
+    raw = message.text or message.caption or ""
+    command_token = raw.split(maxsplit=1)[0] if raw.startswith("/") else "non-command"
     LOGGER(__name__).info(
-        "INCOMING MESSAGE UPDATE | sender=%s | chat=%s | type=%s",
+        "INCOMING MESSAGE UPDATE | sender=%s | chat=%s | type=%s | command=%s",
         sender,
         chat_id,
         message.chat.type if message.chat else "unknown",
+        command_token,
     )
 
 
-@app.on_message(filters.regex(r"(?i)^/(?:ping|alive)(?:@\w+)?(?:\s|$)") & ~filters.forwarded)
+@app.on_message(filters.command(["ping", "alive"]) & ~filters.forwarded, group=10)
 async def ping_com(_, message: Message):
     LOGGER(__name__).info(
         "PING TRIGGERED | User: %s | Chat: %s",
