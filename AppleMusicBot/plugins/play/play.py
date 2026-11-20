@@ -26,7 +26,7 @@ from config import BANNED_USERS, lyrical
 
 
 @app.on_message(
-    filters.regex(r"(?i)^/(?:play|vplay|cplay|cvplay|playforce|vplayforce|cplayforce|cvplayforce)(?:@\\w+)?(?:\\s|$)")
+    filters.regex(r"(?i)^/(?:play|vplay|cplay|cvplay|playforce|vplayforce|cplayforce|cvplayforce)(?:@\w+)?(?:\s|$)")
     & filters.group
     & ~BANNED_USERS
 )
@@ -657,7 +657,7 @@ async def slider_queries(client, CallbackQuery, _):
         )
 
 @app.on_message(
-    filters.regex(r"(?i)^/(?:play|vplay|cplay|cvplay|playforce|vplayforce|cplayforce|cvplayforce)(?:@\\w+)?(?:\\s|$)")
+    filters.regex(r"(?i)^/(?:play|vplay|cplay|cvplay|playforce|vplayforce|cplayforce|cvplayforce)(?:@\w+)?(?:\s|$)")
     & filters.private
     & ~BANNED_USERS
 )
