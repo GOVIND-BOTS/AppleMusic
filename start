@@ -20,4 +20,4 @@ if ! kill -0 "$POT_PID" 2>/dev/null; then
 fi
 
 echo "[STARTUP] YouTube PO-token provider is running on 127.0.0.1:4416"
-exec python3 -m AppleMusicBot
+python3 -m AppleMusicBot
