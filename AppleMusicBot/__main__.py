@@ -1,8 +1,7 @@
 import asyncio
 
 # Create and install the application's event loop BEFORE importing any module
-# that constructs Pyrogram/Kurigram or PyTgCalls clients. Those clients bind
-# themselves to the current loop during construction.
+# that constructs Pyrogram/Kurigram or PyTgCalls clients.
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
@@ -62,9 +61,13 @@ async def init():
                 f"Failed to load banned users: {type(exc).__name__}: {exc}"
             )
 
-        await app.start()
-        LOGGER("AppleMusicBot").info("Bot client started.")
-
+        # Register every message/callback handler BEFORE starting the
+        # Telegram client. This guarantees the dispatcher is initialized
+        # with the complete handler set from the first incoming update.
+        LOGGER("AppleMusicBot.plugins").info(
+            "Registering %s plugin modules before Telegram startup...",
+            len(ALL_MODULES),
+        )
         for module in ALL_MODULES:
             if module.startswith("AppleMusicBot.plugins"):
                 importlib.import_module(module)
@@ -74,7 +77,17 @@ async def init():
                 )
 
         LOGGER("AppleMusicBot.plugins").info(
-            "Successfully imported all plugins."
+            "Successfully registered all %s plugin modules.",
+            len(ALL_MODULES),
+        )
+
+        await app.start()
+        me = await app.get_me()
+        LOGGER("AppleMusicBot").info(
+            "Telegram bot connected: %s (@%s), ID: %s",
+            me.first_name,
+            me.username,
+            me.id,
         )
 
         await userbot.start()
