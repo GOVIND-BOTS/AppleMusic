@@ -161,8 +161,38 @@ class YouTubeAPI:
 
     @staticmethod
     def _extract(url, download=False, options=None):
-        with yt_dlp.YoutubeDL(options or {}) as ydl:
-            return ydl.extract_info(url, download=download)
+        """Extract YouTube data, retrying with alternate player clients when
+        YouTube's default client exposes no selectable media formats.
+        """
+        base_options = dict(options or {})
+        try:
+            with yt_dlp.YoutubeDL(base_options) as ydl:
+                return ydl.extract_info(url, download=download)
+        except yt_dlp.utils.DownloadError as exc:
+            error_text = str(exc).lower()
+            format_unavailable = (
+                "requested format is not available" in error_text
+                or "no video formats found" in error_text
+                or "only images are available" in error_text
+            )
+            if not format_unavailable:
+                raise
+
+            retry_options = dict(base_options)
+            retry_options["format"] = "bestaudio/best/18"
+            extractor_args = dict(retry_options.get("extractor_args") or {})
+            youtube_args = dict(extractor_args.get("youtube") or {})
+            # Android often exposes formats when the default web player does not.
+            youtube_args["player_client"] = ["android", "web"]
+            extractor_args["youtube"] = youtube_args
+            retry_options["extractor_args"] = extractor_args
+
+            logging.getLogger(__name__).warning(
+                "YouTube default player returned no usable formats; "
+                "retrying with Android/Web player clients."
+            )
+            with yt_dlp.YoutubeDL(retry_options) as ydl:
+                return ydl.extract_info(url, download=download)
 
     async def exists(self, link, videoid=None):
         if not link:
