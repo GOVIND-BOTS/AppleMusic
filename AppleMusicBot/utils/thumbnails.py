@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from youtubesearchpython.__future__ import VideosSearch
 
 from AppleMusicBot import app
+from AppleMusicBot.logging import LOGGER
 from config import YOUTUBE_IMG_URL
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,7 +58,7 @@ async def _avatar(user_id):
     return None
 
 
-async def get_thumb(videoid, user_id):
+async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
     """Build the branded anime-style Now Playing thumbnail."""
     output = CACHE / f"{videoid}_{user_id}_v2.png"
     if output.is_file():
@@ -113,5 +114,6 @@ async def get_thumb(videoid, user_id):
 
         canvas.convert("RGB").save(output, "PNG", optimize=True)
         return str(output)
-    except Exception:
+    except Exception as exc:
+        LOGGER(__name__).exception("Now Playing thumbnail generation failed for %s: %s", videoid, exc)
         return YOUTUBE_IMG_URL
