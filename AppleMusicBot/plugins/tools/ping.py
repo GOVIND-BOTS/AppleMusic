@@ -23,7 +23,7 @@ async def incoming_message_probe(_, message: Message):
     )
 
 
-@app.on_message(filters.command(["ping", "alive"]) & ~filters.forwarded)
+@app.on_message(filters.regex(r"(?i)^/(?:ping|alive)(?:@\w+)?(?:\s|$)") & ~filters.forwarded)
 async def ping_com(_, message: Message):
     LOGGER(__name__).info(
         "PING TRIGGERED | User: %s | Chat: %s",
