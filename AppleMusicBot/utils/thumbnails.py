@@ -71,7 +71,7 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
             items = (await search.next()).get("result", [])
             item = items[0] if items else {}
         title = re.sub(
-            r"\\s+",
+            r"\s+",
             " ",
             track_title or item.get("title", "Unknown Track"),
         ).strip()
