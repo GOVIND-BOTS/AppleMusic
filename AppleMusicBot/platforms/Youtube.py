@@ -161,8 +161,11 @@ class YouTubeAPI:
 
     @staticmethod
     def _extract(url, download=False, options=None):
-        """Extract YouTube data, retrying with alternate player clients when
-        YouTube's default client exposes no selectable media formats.
+        """Extract YouTube data with a no-PO-token client fallback.
+
+        YouTube increasingly withholds regular media formats from some
+        clients unless a per-video PO token is supplied. android_vr currently
+        exposes formats without that token, so retry it without account cookies.
         """
         base_options = dict(options or {})
         try:
@@ -178,21 +181,28 @@ class YouTubeAPI:
             if not format_unavailable:
                 raise
 
+            logger = logging.getLogger(__name__)
             retry_options = dict(base_options)
             retry_options["format"] = "bestaudio/best/18"
+            retry_options.pop("cookiefile", None)
             extractor_args = dict(retry_options.get("extractor_args") or {})
             youtube_args = dict(extractor_args.get("youtube") or {})
-            # Android often exposes formats when the default web player does not.
-            youtube_args["player_client"] = ["android", "web"]
+            youtube_args["player_client"] = ["android_vr"]
             extractor_args["youtube"] = youtube_args
             retry_options["extractor_args"] = extractor_args
 
-            logging.getLogger(__name__).warning(
-                "YouTube default player returned no usable formats; "
-                "retrying with Android/Web player clients."
+            logger.warning(
+                "YouTube returned no formats; retrying with android_vr "
+                "without account cookies (PO-token-free client)."
             )
-            with yt_dlp.YoutubeDL(retry_options) as ydl:
-                return ydl.extract_info(url, download=download)
+            try:
+                with yt_dlp.YoutubeDL(retry_options) as ydl:
+                    return ydl.extract_info(url, download=download)
+            except yt_dlp.utils.DownloadError as retry_exc:
+                logger.error(
+                    "YouTube android_vr fallback also failed: %s", retry_exc
+                )
+                raise retry_exc
 
     async def exists(self, link, videoid=None):
         if not link:
