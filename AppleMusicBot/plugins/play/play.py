@@ -77,72 +77,69 @@ async def play_commnd(
         else None
     )
 
-    if audio_telegram:
-        if audio_telegram.file_size > 104857600:
-            return await mystic.edit_text(_["play_5"])
-        if audio_telegram.duration > config.DURATION_LIMIT:
+    if audio_telegram or video_telegram:
+        media = audio_telegram or video_telegram
+        is_video = bool(video_telegram)
+        size = getattr(media, "file_size", 0) or 0
+        limit = (
+            config.TG_VIDEO_FILESIZE_LIMIT
+            if is_video
+            else config.TG_AUDIO_FILESIZE_LIMIT
+        )
+        if size > limit:
+            return await mystic.edit_text(
+                _["play_8"] if is_video else _["play_5"]
+            )
+
+        duration = getattr(media, "duration", 0) or 0
+        if duration and duration > config.DURATION_LIMIT:
             return await mystic.edit_text(
                 _["play_6"].format(config.DURATION_LIMIT_MIN, app.mention)
             )
-        file_path = await Telegram.get_filepath(audio=audio_telegram)
-        if await Telegram.download(_, message, mystic, file_path):
-            message_link = await Telegram.get_link(message)
-            file_name = await Telegram.get_filename(audio_telegram, audio=True)
-            dur = await Telegram.get_duration(audio_telegram, file_path)
-            details = {
-                "title": file_name,
-                "link": message_link,
-                "path": file_path,
-                "dur": dur,
-            }
-            try:
-                await stream(
-                    _, mystic, user_id, details, chat_id, user_name,
-                    message.chat.id, streamtype="telegram", forceplay=fplay,
-                )
-            except Exception as e:
-                ex_type = type(e).__name__
-                err = e if ex_type == "AssistantErr" else _["general_2"].format(ex_type)
-                return await mystic.edit_text(err)
-            return await mystic.delete()
-        return
 
-    elif video_telegram:
-        if message.reply_to_message.document:
-            try:
-                ext = video_telegram.file_name.split(".")[-1]
-                if ext.lower() not in formats:
-                    return await mystic.edit_text(
-                        _["play_7"].format(f"{' | '.join(formats)}")
-                    )
-            except:
+        if is_video and message.reply_to_message.document:
+            filename = getattr(media, "file_name", "") or ""
+            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+            if ext not in formats:
                 return await mystic.edit_text(
                     _["play_7"].format(f"{' | '.join(formats)}")
                 )
-        if video_telegram.file_size > config.TG_VIDEO_FILESIZE_LIMIT:
-            return await mystic.edit_text(_["play_8"])
-        file_path = await Telegram.get_filepath(video=video_telegram)
-        if await Telegram.download(_, message, mystic, file_path):
-            message_link = await Telegram.get_link(message)
-            file_name = await Telegram.get_filename(video_telegram)
-            dur = await Telegram.get_duration(video_telegram, file_path)
+
+        try:
+            downloaded = await Telegram.download(message, video=is_video)
+        except Exception as exc:
+            LOGGER(__name__).exception("Telegram media download failed: %s", exc)
+            return await mystic.edit_text(
+                "❌ Telegram media download failed. Please try another file."
+            )
+
+        if not downloaded or not downloaded.get("path"):
+            return await mystic.edit_text(
+                "❌ Unable to download this Telegram media. Check file size and try again."
+            )
+
+        try:
+            reply = message.reply_to_message
+            message_link = getattr(reply, "link", None) if reply else None
+            message_link = message_link or config.SUPPORT_CHAT
+            file_duration = seconds_to_min(downloaded.get("duration", 0))
             details = {
-                "title": file_name,
+                "title": downloaded["title"],
                 "link": message_link,
-                "path": file_path,
-                "dur": dur,
+                "path": downloaded["path"],
+                "dur": file_duration,
             }
-            try:
-                await stream(
-                    _, mystic, user_id, details, chat_id, user_name,
-                    message.chat.id, video=True, streamtype="telegram", forceplay=fplay,
-                )
-            except Exception as e:
-                ex_type = type(e).__name__
-                err = e if ex_type == "AssistantErr" else _["general_2"].format(ex_type)
-                return await mystic.edit_text(err)
-            return await mystic.delete()
-        return
+            await stream(
+                _, mystic, user_id, details, chat_id, user_name,
+                message.chat.id, video=is_video,
+                streamtype="telegram", forceplay=fplay,
+            )
+        except Exception as exc:
+            LOGGER(__name__).exception("Telegram media playback failed: %s", exc)
+            ex_type = type(exc).__name__
+            err = exc if ex_type == "AssistantErr" else _["general_2"].format(ex_type)
+            return await mystic.edit_text(err)
+        return await mystic.delete()
 
     elif url:
         if await YouTube.exists(url):
