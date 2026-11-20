@@ -12,7 +12,7 @@ from pyrogram.enums import MessageEntityType
 class YouTubeAPI:
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
-        self.regex = r"(?:youtube\\.com|youtu\\.be)"
+        self.regex = r"(?:youtube\.com|youtu\.be)"
         self.download_dir = Path("downloads")
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
@@ -51,9 +51,9 @@ class YouTubeAPI:
             line for line in data.splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         ]
-        if not cookie_rows or not any(len(row.split("\\t")) >= 7 for row in cookie_rows):
+        if not cookie_rows or not any(len(row.split("\t")) >= 7 for row in cookie_rows):
             raise ValueError("Netscape cookies file contains no valid cookie rows.")
-        return data + "\\n"
+        return data + "\n"
 
     @classmethod
     def _write_cookie_data(cls, data, destination):
@@ -110,7 +110,7 @@ class YouTubeAPI:
             except (binascii.Error, UnicodeDecodeError, ValueError):
                 # If it looks like Netscape text, treat it as raw instead.
                 if "# Netscape HTTP Cookie File" in encoded or (
-                    "\\t" in encoded and "\\n" in encoded
+                    "\t" in encoded and "\n" in encoded
                 ):
                     decoded = encoded
                 else:
@@ -173,7 +173,7 @@ class YouTubeAPI:
                 if entity.type == MessageEntityType.TEXT_LINK:
                     return entity.url
             match = re.search(
-                r"https?://(?:www\\.)?(?:youtube\\.com|youtu\\.be)/\\S+",
+                r"https?://(?:www\.)?(?:youtube\.com|youtu\.be)/\S+",
                 text, re.I,
             )
             if match:
