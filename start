@@ -1,1 +1,23 @@
-python3 -m AppleMusicBot
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# The provider and Telegram bot run inside this one Railway service.
+export YOUTUBE_POT_BASE_URL="${YOUTUBE_POT_BASE_URL:-http://127.0.0.1:4416}"
+
+node /opt/bgutil-provider/build/main.js --host 127.0.0.1 --port 4416 &
+POT_PID=$!
+
+cleanup() {
+    kill "$POT_PID" 2>/dev/null || true
+    wait "$POT_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+sleep 2
+if ! kill -0 "$POT_PID" 2>/dev/null; then
+    echo "[STARTUP ERROR] YouTube PO-token provider did not start."
+    exit 1
+fi
+
+echo "[STARTUP] YouTube PO-token provider is running on 127.0.0.1:4416"
+exec python3 -m AppleMusicBot
