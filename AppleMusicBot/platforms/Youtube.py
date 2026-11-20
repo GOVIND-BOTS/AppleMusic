@@ -1,4 +1,3 @@
-
 import asyncio
 import base64
 import os
@@ -35,50 +34,51 @@ class YouTubeAPI:
 
     @staticmethod
     def _cookie_options():
-        """Load cookies from file or Base64 environment variable."""
-        # Prefer an explicitly configured path; otherwise use cookies.txt
-        # from the repository root (also works in Railway's /app workdir).
-        configured_path = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
-        cookie_path = (
-            Path(configured_path).expanduser()
-            if configured_path
-            else Path(__file__).resolve().parents[2] / "cookies.txt"
-        )
+        """Load cookies from file or Base64 environment variable.
+        Priority:
+        1. YOUTUBE_COOKIES_BASE64 → writes cookies.txt in project root
+        2. Existing cookies.txt in project root
+        3. YOUTUBE_COOKIES_FILE custom path
+        """
+        # Project root cookies.txt path
+        cookie_path = Path(__file__).resolve().parents[2] / "cookies.txt"
 
+        # 1. Agar YOUTUBE_COOKIES_BASE64 set hai to usse cookies.txt banao
+        encoded = os.getenv("YOUTUBE_COOKIES_BASE64", "").strip()
+        if encoded:
+            try:
+                cookie_data = base64.b64decode(encoded, validate=True).decode("utf-8")
+
+                if not (
+                    cookie_data.startswith("# Netscape HTTP Cookie File")
+                    or cookie_data.startswith("# HTTP Cookie File")
+                ):
+                    raise ValueError("Invalid Netscape cookies format.")
+
+                cookie_path.write_text(cookie_data, encoding="utf-8")
+                try:
+                    os.chmod(cookie_path, 0o600)
+                except Exception:
+                    pass
+
+                print(f"[YouTube] cookies.txt created at: {cookie_path}")
+                return {"cookiefile": str(cookie_path.resolve())}
+
+            except Exception as e:
+                raise ValueError(f"Unable to load YouTube cookies: {e}")
+
+        # 2. Agar already cookies.txt maujood hai
         if cookie_path.is_file() and cookie_path.stat().st_size > 0:
             return {"cookiefile": str(cookie_path.resolve())}
 
-        encoded = os.getenv("YOUTUBE_COOKIES_BASE64", "").strip()
+        # 3. Custom path se
+        configured_path = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+        if configured_path:
+            custom_path = Path(configured_path).expanduser()
+            if custom_path.is_file() and custom_path.stat().st_size > 0:
+                return {"cookiefile": str(custom_path.resolve())}
 
-        if not encoded:
-            return {}
-
-        cookie_path = Path("/tmp/youtube_cookies.txt")
-
-        try:
-            cookie_data = base64.b64decode(
-                encoded,
-                validate=True,
-            ).decode("utf-8")
-
-            if not (
-                cookie_data.startswith("# Netscape HTTP Cookie File")
-                or cookie_data.startswith("# HTTP Cookie File")
-            ):
-                raise ValueError("Invalid Netscape cookies format.")
-
-            cookie_path.write_text(
-                cookie_data,
-                encoding="utf-8",
-            )
-            os.chmod(cookie_path, 0o600)
-
-            return {"cookiefile": str(cookie_path)}
-
-        except Exception as e:
-            raise ValueError(
-                f"Unable to load YouTube cookies: {e}"
-            )
+        return {}
 
     @classmethod
     def _options(cls, **kwargs):
