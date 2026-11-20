@@ -26,9 +26,10 @@ from config import BANNED_USERS, lyrical
 
 
 @app.on_message(
-    filters.regex(r"(?i)^/(?:play|vplay|cplay|cvplay|playforce|vplayforce|cplayforce|cvplayforce)(?:@\w+)?(?:\s|$)")
+    filters.command(["play", "vplay", "cplay", "cvplay", "playforce", "vplayforce", "cplayforce", "cvplayforce"])
     & filters.group
-    & ~BANNED_USERS
+    & ~BANNED_USERS,
+    group=10,
 )
 @PlayWrapper
 async def play_commnd(
@@ -657,9 +658,10 @@ async def slider_queries(client, CallbackQuery, _):
         )
 
 @app.on_message(
-    filters.regex(r"(?i)^/(?:play|vplay|cplay|cvplay|playforce|vplayforce|cplayforce|cvplayforce)(?:@\w+)?(?:\s|$)")
+    filters.command(["play", "vplay", "cplay", "cvplay", "playforce", "vplayforce", "cplayforce", "cvplayforce"])
     & filters.private
-    & ~BANNED_USERS
+    & ~BANNED_USERS,
+    group=10,
 )
 async def play_private_notice(client, message: Message):
     await message.reply_text(
