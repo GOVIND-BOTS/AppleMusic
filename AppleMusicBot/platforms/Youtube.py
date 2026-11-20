@@ -143,6 +143,14 @@ class YouTubeAPI:
             # Music playback needs an audio-only format; YouTube may not expose
             # a combined best video+audio format for every client/video.
             "format": "bestaudio/best",
+            # Prefer a client that still exposes direct audio formats to yt-dlp.
+            # YouTube's default web/SABR responses can expose metadata but no
+            # downloadable formats, which causes "Requested format is not available".
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android_vr"],
+                }
+            },
         }
         options.update(cls._cookie_options())
         options.update(kwargs)
