@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # The provider and Telegram bot run inside this one Railway service.
-export YOUTUBE_POT_BASE_URL="${YOUTUBE_POT_BASE_URL:-http://127.0.0.1:4416}"
+export YOUTUBE_POT_BASE_URL="http://127.0.0.1:4416"
 
 node /opt/bgutil-provider/build/main.js --host 127.0.0.1 --port 4416 &
 POT_PID=$!
