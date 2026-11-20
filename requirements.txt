@@ -47,7 +47,7 @@ unidecode
 
 # Music Platforms
 spotipy
-yt-dlp
+yt-dlp[default]
 youtube-search
 youtube-search-python
 gtts
