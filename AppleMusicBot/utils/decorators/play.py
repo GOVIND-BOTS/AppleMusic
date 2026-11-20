@@ -1,4 +1,3 @@
-
 import asyncio
 
 from pyrogram.enums import ChatMemberStatus
@@ -34,7 +33,9 @@ def PlayWrapper(command):
         try:
             language = await get_lang(message.chat.id)
         except Exception as exc:
-            LOGGER(__name__).warning("Play language lookup failed: %s: %s", type(exc).__name__, exc)
+            LOGGER(__name__).warning(
+                "Play language lookup failed: %s: %s", type(exc).__name__, exc
+            )
             language = "en"
         _ = get_string(language)
 
@@ -55,13 +56,13 @@ def PlayWrapper(command):
                 reply_markup=upl,
             )
 
-        # is_maintenance() returns False when maintenance mode is ON.
-        # Block regular users only while maintenance mode is actually enabled.
+        # Maintenance check
         try:
             maintenance_enabled = await is_maintenance() is False
         except Exception as exc:
-            # Fail open if the optional maintenance lookup/database is unavailable.
-            LOGGER(__name__).warning("Play maintenance lookup failed: %s: %s", type(exc).__name__, exc)
+            LOGGER(__name__).warning(
+                "Play maintenance lookup failed: %s: %s", type(exc).__name__, exc
+            )
             maintenance_enabled = False
 
         if maintenance_enabled:
@@ -83,19 +84,13 @@ def PlayWrapper(command):
 
         # Check replied Telegram audio/video
         audio_telegram = (
-            (
-                message.reply_to_message.audio
-                or message.reply_to_message.voice
-            )
+            (message.reply_to_message.audio or message.reply_to_message.voice)
             if message.reply_to_message
             else None
         )
 
         video_telegram = (
-            (
-                message.reply_to_message.video
-                or message.reply_to_message.document
-            )
+            (message.reply_to_message.video or message.reply_to_message.document)
             if message.reply_to_message
             else None
         )
@@ -104,17 +99,12 @@ def PlayWrapper(command):
         url = await YouTube.url(message)
 
         # Empty command handling
-        if (
-            audio_telegram is None
-            and video_telegram is None
-            and url is None
-        ):
+        if audio_telegram is None and video_telegram is None and url is None:
             if len(message.command) < 2:
                 if "stream" in message.command:
                     return await message.reply_text(_["str_1"])
 
                 buttons = botplaylist_markup(_)
-
                 return await message.reply_photo(
                     photo=PLAYLIST_IMG_URL,
                     caption=_["play_18"],
@@ -134,7 +124,6 @@ def PlayWrapper(command):
                 return await message.reply_text(_["cplay_4"])
 
             channel = chat.title
-
         else:
             chat_id = message.chat.id
             channel = None
@@ -161,17 +150,12 @@ def PlayWrapper(command):
             if "-v" in message.text:
                 video = True
             else:
-                video = (
-                    True
-                    if message.command[0][1] == "v"
-                    else None
-                )
+                video = True if message.command[0][1] == "v" else None
 
         # Force play mode
         if message.command[0][-1] == "e":
             if not await is_active_chat(chat_id):
                 return await message.reply_text(_["play_16"])
-
             fplay = True
         else:
             fplay = None
@@ -183,23 +167,14 @@ def PlayWrapper(command):
             try:
                 try:
                     try:
-                        get = await app.get_chat_member(
-                            chat_id,
-                            int(userbot.id),
-                        )
+                        get = await app.get_chat_member(chat_id, int(userbot.id))
                     except Exception:
-                        get = await app.get_chat_member(
-                            chat_id,
-                            userbot.username,
-                        )
+                        get = await app.get_chat_member(chat_id, userbot.username)
 
                 except ChatAdminRequired:
                     return await message.reply_text(_["call_1"])
 
-                if (
-                    get.status == ChatMemberStatus.BANNED
-                    or get.status == ChatMemberStatus.RESTRICTED
-                ):
+                if get.status in [ChatMemberStatus.BANNED, ChatMemberStatus.RESTRICTED]:
                     return await message.reply_text(
                         _["call_2"].format(
                             app.mention,
@@ -213,43 +188,30 @@ def PlayWrapper(command):
                 # Get group invite link
                 if chat_id in links:
                     invitelink = links[chat_id]
-
                 else:
                     if message.chat.username:
                         invitelink = message.chat.username
-
                         try:
                             await userbot.resolve_peer(invitelink)
                         except Exception:
                             pass
-
                     else:
                         try:
-                            invitelink = await app.export_chat_invite_link(
-                                chat_id
-                            )
-
+                            invitelink = await app.export_chat_invite_link(chat_id)
                         except ChatAdminRequired:
                             return await message.reply_text(_["call_1"])
-
                         except Exception as e:
                             return await message.reply_text(
-                                _["call_3"].format(
-                                    app.mention,
-                                    type(e).__name__,
-                                )
+                                _["call_3"].format(app.mention, type(e).__name__)
                             )
 
                 # Convert invite link
                 if invitelink.startswith("https://t.me/+"):
                     invitelink = invitelink.replace(
-                        "https://t.me/+",
-                        "https://t.me/joinchat/",
+                        "https://t.me/+", "https://t.me/joinchat/"
                     )
 
-                myu = await message.reply_text(
-                    _["call_4"].format(app.mention)
-                )
+                myu = await message.reply_text(_["call_4"].format(app.mention))
 
                 try:
                     await asyncio.sleep(1)
@@ -257,33 +219,20 @@ def PlayWrapper(command):
 
                 except InviteRequestSent:
                     try:
-                        await app.approve_chat_join_request(
-                            chat_id,
-                            userbot.id,
-                        )
-
+                        await app.approve_chat_join_request(chat_id, userbot.id)
                     except Exception as e:
                         return await message.reply_text(
-                            _["call_3"].format(
-                                app.mention,
-                                type(e).__name__,
-                            )
+                            _["call_3"].format(app.mention, type(e).__name__)
                         )
-
                     await asyncio.sleep(3)
-                    await myu.edit(
-                        _["call_5"].format(app.mention)
-                    )
+                    await myu.edit(_["call_5"].format(app.mention))
 
                 except UserAlreadyParticipant:
                     pass
 
                 except Exception as e:
                     return await message.reply_text(
-                        _["call_3"].format(
-                            app.mention,
-                            type(e).__name__,
-                        )
+                        _["call_3"].format(app.mention, type(e).__name__)
                     )
 
                 links[chat_id] = invitelink
@@ -307,13 +256,17 @@ def PlayWrapper(command):
         )
 
     async def wrapper(client, message):
+        LOGGER(__name__).info(
+            f"PlayWrapper called | User: {message.from_user.id if message.from_user else None} | "
+            f"Chat: {message.chat.id} | Text: {message.text}"
+        )
         try:
             return await _run_wrapper(client, message)
         except Exception as exc:
             LOGGER(__name__).exception("Play command wrapper failed")
             try:
                 await message.reply_text(
-                    f"Play command error: {type(exc).__name__}: {str(exc)[:250]}"
+                    f"❌ Play Error:\n`{type(exc).__name__}: {str(exc)[:300]}`"
                 )
             except Exception:
                 pass
