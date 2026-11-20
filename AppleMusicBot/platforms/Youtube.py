@@ -140,6 +140,9 @@ class YouTubeAPI:
             "retries": 3,
             "fragment_retries": 3,
             "socket_timeout": 30,
+            # Music playback needs an audio-only format; YouTube may not expose
+            # a combined best video+audio format for every client/video.
+            "format": "bestaudio/best",
         }
         options.update(cls._cookie_options())
         options.update(kwargs)
@@ -220,7 +223,10 @@ class YouTubeAPI:
         loop = asyncio.get_running_loop()
 
         def _track():
-            info = self._extract(query, options=self._options())
+            info = self._extract(
+                query,
+                options=self._options(format="bestaudio/best", extract_flat=False),
+            )
             vidid = info.get("id")
             if not vidid:
                 raise ValueError("YouTube video ID not found.")
@@ -324,7 +330,10 @@ class YouTubeAPI:
             def _get_url():
                 info = self._extract(
                     link,
-                    options=self._options(format="best[height<=720]/best"),
+                    options=self._options(
+                        format="best[height<=720][vcodec!=none]/best[height<=720]/best",
+                        extract_flat=False,
+                    ),
                 )
                 return info.get("url")
 
