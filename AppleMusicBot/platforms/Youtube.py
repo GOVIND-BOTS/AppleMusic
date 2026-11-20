@@ -141,14 +141,19 @@ class YouTubeAPI:
             "retries": 3,
             "fragment_retries": 3,
             "socket_timeout": 30,
-            # Music playback needs an audio-only format; YouTube may not expose
-            # a combined best video+audio format for every client/video.
             "format": "bestaudio/best",
-            # Let current yt-dlp choose its maintained YouTube clients.
-            # Hard-coding android_vr causes missing-format failures on newer
-            # YouTube player versions. Enable the Node runtime installed in Docker.
             "js_runtimes": {"node": {}},
         }
+
+        # YouTube now requires video-bound PO tokens for many GVS formats.
+        # Railway should point this to a private bgutil provider service.
+        pot_base_url = os.getenv("YOUTUBE_POT_BASE_URL", "").strip()
+        if pot_base_url:
+            options["extractor_args"] = {
+                "youtube": {"player_client": ["mweb", "tv", "web_safari"]},
+                "youtubepot-bgutilhttp": {"base_url": pot_base_url},
+            }
+
         # Invalid or expired optional cookies must not disable YouTube playback.
         try:
             options.update(cls._cookie_options())
@@ -161,12 +166,7 @@ class YouTubeAPI:
 
     @staticmethod
     def _extract(url, download=False, options=None):
-        """Extract YouTube data with a no-PO-token client fallback.
-
-        YouTube increasingly withholds regular media formats from some
-        clients unless a per-video PO token is supplied. android_vr currently
-        exposes formats without that token, so retry it without account cookies.
-        """
+        """Extract YouTube data and retry with a configured PO-token provider."""
         base_options = dict(options or {})
         try:
             with yt_dlp.YoutubeDL(base_options) as ydl:
@@ -183,25 +183,38 @@ class YouTubeAPI:
 
             logger = logging.getLogger(__name__)
             retry_options = dict(base_options)
-            retry_options["format"] = "bestaudio/best/18"
+            retry_options["format"] = "bestaudio/best"
             retry_options.pop("cookiefile", None)
+
+            # android_vr is no longer a reliable fallback. Prefer mweb with
+            # a fresh per-video PO token from the configured bgutil provider.
+            pot_base_url = os.getenv("YOUTUBE_POT_BASE_URL", "").strip()
             extractor_args = dict(retry_options.get("extractor_args") or {})
             youtube_args = dict(extractor_args.get("youtube") or {})
-            youtube_args["player_client"] = ["android_vr"]
+            if pot_base_url:
+                youtube_args["player_client"] = ["mweb", "tv", "web_safari"]
+                extractor_args["youtubepot-bgutilhttp"] = {
+                    "base_url": pot_base_url,
+                }
+                logger.warning(
+                    "YouTube returned no formats; retrying with mweb/tv/web_safari "
+                    "and the configured bgutil PO-token provider."
+                )
+            else:
+                youtube_args["player_client"] = ["tv", "web_safari"]
+                logger.warning(
+                    "YouTube returned no formats and YOUTUBE_POT_BASE_URL is unset; "
+                    "retrying with tv/web_safari only. Configure the private bgutil "
+                    "provider service for reliable format extraction."
+                )
             extractor_args["youtube"] = youtube_args
             retry_options["extractor_args"] = extractor_args
 
-            logger.warning(
-                "YouTube returned no formats; retrying with android_vr "
-                "without account cookies (PO-token-free client)."
-            )
             try:
                 with yt_dlp.YoutubeDL(retry_options) as ydl:
                     return ydl.extract_info(url, download=download)
             except yt_dlp.utils.DownloadError as retry_exc:
-                logger.error(
-                    "YouTube android_vr fallback also failed: %s", retry_exc
-                )
+                logger.error("YouTube PO-token/client fallback failed: %s", retry_exc)
                 raise retry_exc
 
     async def exists(self, link, videoid=None):
