@@ -60,7 +60,7 @@ async def _avatar(user_id):
 
 async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
     """Build the branded anime-style Now Playing thumbnail."""
-    output = CACHE / f"{videoid}_{user_id}_v2.png"
+    output = CACHE / f"{videoid}_{user_id}_v3.png"
     if output.is_file():
         return str(output)
 
