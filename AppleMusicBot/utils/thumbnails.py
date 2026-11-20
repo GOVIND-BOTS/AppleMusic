@@ -1,143 +1,117 @@
 import os
 import re
+from pathlib import Path
 
-import aiofiles
 import aiohttp
-import numpy as np
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
-from unidecode import unidecode
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from youtubesearchpython.__future__ import VideosSearch
 
 from AppleMusicBot import app
 from config import YOUTUBE_IMG_URL
 
-
-def changeImageSize(maxWidth, maxHeight, image):
-    widthRatio = maxWidth / image.size[0]
-    heightRatio = maxHeight / image.size[1]
-    newWidth = int(widthRatio * image.size[0])
-    newHeight = int(heightRatio * image.size[1])
-    newImage = image.resize((newWidth, newHeight))
-    return newImage
-
-def circle(img): 
-     h,w=img.size 
-     a = Image.new('L', [h,w], 0) 
-     b = ImageDraw.Draw(a) 
-     b.pieslice([(0, 0), (h,w)], 0, 360, fill = 255,outline = "white") 
-     c = np.array(img) 
-     d = np.array(a) 
-     e = np.dstack((c, d)) 
-     return Image.fromarray(e)
+ROOT = Path(__file__).resolve().parents[1]
+ASSETS = ROOT / "assets"
+TEMPLATE = ASSETS / "nowplaying_template.jpg"
+CACHE = Path("cache")
+CACHE.mkdir(parents=True, exist_ok=True)
 
 
-def clear(text):
-    list = text.split(" ")
-    title = ""
-    for i in list:
-        if len(title) + len(i) < 60:
-            title += " " + i
-    return title.strip()
-
-
-async def get_thumb(videoid,user_id):
-    if os.path.isfile(f"cache/{videoid}_{user_id}.png"):
-        return f"cache/{videoid}_{user_id}.png"
-
-    url = f"https://www.youtube.com/watch?v={videoid}"
+def _font(size, bold=False):
+    path = ASSETS / ("font2.ttf" if bold else "font.ttf")
     try:
-        results = VideosSearch(url, limit=1)
-        for result in (await results.next())["result"]:
-            try:
-                title = result["title"]
-                title = re.sub("\W+", " ", title)
-                title = title.title()
-            except:
-                title = "Unsupported Title"
-            try:
-                duration = result["duration"]
-            except:
-                duration = "Unknown Mins"
-            thumbnail = result["thumbnails"][0]["url"].split("?")[0]
-            try:
-                views = result["viewCount"]["short"]
-            except:
-                views = "Unknown Views"
-            try:
-                channel = result["channel"]["name"]
-            except:
-                channel = "Unknown Channel"
+        return ImageFont.truetype(str(path), size)
+    except Exception:
+        return ImageFont.load_default()
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(thumbnail) as resp:
-                if resp.status == 200:
-                    f = await aiofiles.open(f"cache/thumb{videoid}.png", mode="wb")
-                    await f.write(await resp.read())
-                    await f.close()
+
+def _circle(canvas, source, x, y, size, ring=(255, 255, 255, 255), border=5):
+    source = ImageOps.fit(source.convert("RGB"), (size, size), method=Image.Resampling.LANCZOS)
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
+    if border:
+        layer = Image.new("RGBA", (size + border * 2, size + border * 2), (0, 0, 0, 0))
+        ImageDraw.Draw(layer).ellipse((0, 0, layer.width - 1, layer.height - 1), fill=ring)
+        canvas.alpha_composite(layer, (x - border, y - border))
+    canvas.paste(source.convert("RGBA"), (x, y), mask)
+
+
+async def _download(url, path):
+    timeout = aiohttp.ClientTimeout(total=20)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            data = await response.read()
+    path.write_bytes(data)
+
+
+async def _avatar(user_id):
+    path = CACHE / f"avatar_{user_id}.jpg"
+    for chat_id in (user_id, app.id):
         try:
-            async for photo in app.get_chat_photos(user_id,1):
-                sp=await app.download_media(photo.file_id, file_name=f'{user_id}.jpg')
-        except:
-            async for photo in app.get_chat_photos(app.id,1):
-                sp=await app.download_media(photo.file_id, file_name=f'{app.id}.jpg')
+            async for photo in app.get_chat_photos(chat_id, limit=1):
+                saved = await app.download_media(photo.file_id, file_name=str(path))
+                if saved and os.path.isfile(saved):
+                    return Image.open(saved).convert("RGB")
+        except Exception:
+            continue
+    return None
 
-        xp=Image.open(sp)
 
-        youtube = Image.open(f"cache/thumb{videoid}.png")
-        image1 = changeImageSize(1280, 720, youtube)
-        image2 = image1.convert("RGBA")
-        background = image2.filter(filter=ImageFilter.BoxBlur(10))
-        enhancer = ImageEnhance.Brightness(background)
-        background = enhancer.enhance(0.5)
-        y=changeImageSize(200,200,circle(youtube)) 
-        background.paste(y,(45,225),mask=y)
-        a=changeImageSize(200,200,circle(xp)) 
-        background.paste(a,(1045,225),mask=a)
-        draw = ImageDraw.Draw(background)
-        arial = ImageFont.truetype("AppleMusic/assets/font2.ttf", 30)
-        font = ImageFont.truetype("AppleMusic/assets/font.ttf", 30)
-        draw.text((1110, 8), unidecode(app.name), fill="white", font=arial)
-        draw.text(
-                (55, 560),
-                f"{channel} | {views[:23]}",
-                (255, 255, 255),
-                font=arial,
+async def get_thumb(videoid, user_id):
+    """Build the branded anime-style Now Playing thumbnail."""
+    output = CACHE / f"{videoid}_{user_id}.png"
+    if output.is_file():
+        return str(output)
+
+    try:
+        search = VideosSearch(f"https://www.youtube.com/watch?v={videoid}", limit=1)
+        items = (await search.next()).get("result", [])
+        if not items:
+            return YOUTUBE_IMG_URL
+
+        item = items[0]
+        title = re.sub(r"\s+", " ", item.get("title", "Unknown Track")).strip()
+        thumb_url = item.get("thumbnails", [{}])[0].get("url", "")
+        if not thumb_url:
+            return YOUTUBE_IMG_URL
+
+        cover_path = CACHE / f"cover_{videoid}.jpg"
+        await _download(thumb_url.split("?")[0], cover_path)
+        cover = Image.open(cover_path).convert("RGB")
+
+        if TEMPLATE.is_file():
+            canvas = ImageOps.fit(
+                Image.open(TEMPLATE).convert("RGBA"), (1280, 720),
+                method=Image.Resampling.LANCZOS
             )
-        draw.text(
-                (57, 600),
-                clear(title),
-                (255, 255, 255),
-                font=font,
-            )
-        draw.line(
-                [(55, 660), (1220, 660)],
-                fill="white",
-                width=5,
-                joint="curve",
-            )
-        draw.ellipse(
-                [(918, 648), (942, 672)],
-                outline="white",
-                fill="white",
-                width=15,
-            )
-        draw.text(
-                (36, 685),
-                "00:00",
-                (255, 255, 255),
-                font=arial,
-            )
-        draw.text(
-                (1185, 685),
-                f"{duration[:23]}",
-                (255, 255, 255),
-                font=arial,
-            )
-        try:
-            os.remove(f"cache/thumb{videoid}.png")
-        except:
-            pass
-        background.save(f"cache/{videoid}_{user_id}.png")
-        return f"cache/{videoid}_{user_id}.png"
+        else:
+            # Fallback keeps play working if the optional template image is missing.
+            canvas = ImageOps.fit(cover, (1280, 720)).convert("RGBA")
+            canvas = canvas.filter(Image.Filter.GaussianBlur(22))
+
+        # Main circle: video/song cover. Small circle: requester Telegram DP.
+        _circle(canvas, cover, 470, 145, 352, ring=(255, 255, 255, 255), border=5)
+        avatar = await _avatar(user_id)
+        _circle(canvas, avatar or cover, 712, 426, 104,
+                ring=(70, 245, 155, 255), border=5)
+
+        draw = ImageDraw.Draw(canvas)
+        bot_name = (getattr(app, "name", None) or "ADISHA MUSIC").upper()[:26]
+        # Multicolour title with a dark outline for readability.
+        draw.text((640, 58), bot_name, font=_font(46, True), anchor="mm",
+                  fill=(255, 90, 145, 255), stroke_width=3, stroke_fill=(10, 10, 18, 255))
+        draw.text((640, 58), bot_name, font=_font(46, True), anchor="mm",
+                  fill=(255, 220, 95, 255), stroke_width=1, stroke_fill=(10, 10, 18, 255))
+        draw.text((640, 582), "NOW PLAYING", font=_font(22, True), anchor="mm",
+                  fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 230))
+        short_title = title if len(title) <= 44 else title[:41].rstrip() + "..."
+        draw.text((640, 620), short_title, font=_font(24, True), anchor="mm",
+                  fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 230))
+        draw.text((640, 684), "POWERED BY GOVIND-BOTS", font=_font(19, True),
+                  anchor="mm", fill=(255, 205, 225, 255),
+                  stroke_width=2, stroke_fill=(0, 0, 0, 230))
+
+        canvas.convert("RGB").save(output, "PNG", optimize=True)
+        return str(output)
     except Exception:
         return YOUTUBE_IMG_URL
