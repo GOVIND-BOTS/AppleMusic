@@ -65,14 +65,17 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
         return str(output)
 
     try:
-        search = VideosSearch(f"https://www.youtube.com/watch?v={videoid}", limit=1)
-        items = (await search.next()).get("result", [])
-        if not items:
-            return YOUTUBE_IMG_URL
-
-        item = items[0]
-        title = re.sub(r"\s+", " ", item.get("title", "Unknown Track")).strip()
-        thumb_url = item.get("thumbnails", [{}])[0].get("url", "")
+        item = {}
+        if not thumbnail_url or not track_title:
+            search = VideosSearch(f"https://www.youtube.com/watch?v={videoid}", limit=1)
+            items = (await search.next()).get("result", [])
+            item = items[0] if items else {}
+        title = re.sub(
+            r"\\s+",
+            " ",
+            track_title or item.get("title", "Unknown Track"),
+        ).strip()
+        thumb_url = thumbnail_url or item.get("thumbnails", [{}])[0].get("url", "")
         if not thumb_url:
             return YOUTUBE_IMG_URL
 
