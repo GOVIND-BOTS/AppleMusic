@@ -49,7 +49,7 @@ unidecode
 # Music Platforms
 spotipy
 yt-dlp[default]
-bgutil-ytdlp-pot-provider>=2.0.2,<3.0.0
+bgutil-ytdlp-pot-provider==2.0.2
 youtube-search
 youtube-search-python
 gtts
