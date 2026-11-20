@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 import aiohttp
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 from youtubesearchpython.__future__ import VideosSearch
 
 from AppleMusicBot import app
@@ -87,7 +87,7 @@ async def get_thumb(videoid, user_id):
         else:
             # Fallback keeps play working if the optional template image is missing.
             canvas = ImageOps.fit(cover, (1280, 720)).convert("RGBA")
-            canvas = canvas.filter(Image.Filter.GaussianBlur(22))
+            canvas = canvas.filter(ImageFilter.GaussianBlur(22))
 
         # Main circle: video/song cover. Small circle: requester Telegram DP.
         _circle(canvas, cover, 470, 145, 352, ring=(255, 255, 255, 255), border=5)
