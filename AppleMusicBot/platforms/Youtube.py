@@ -199,6 +199,10 @@ class YouTubeAPI:
         # its local HTTP provider at 127.0.0.1:4416.
         profiles = [
             profile_for(["mweb"]),
+            # web_safari can expose HLS media URLs even when mweb/web are
+            # placed in YouTube's SABR-only experiment. HLS GVS requests
+            # currently do not require the same PO-token path.
+            profile_for(["web_safari"]),
             profile_for(["tv"]),
             profile_for(["web"]),
             profile_for(["android_vr"]),
