@@ -284,7 +284,7 @@ async def del_back_playlist(client, CallbackQuery, _):
             except:
                 return await CallbackQuery.message.reply_text(_["call_6"])
             button = stream_markup(_, chat_id)
-            run = await CallbackQuery.message.reply_photo(
+            run = await CallbackQuery.message.reply_animation(
                 photo=STREAM_IMG_URL,
                 caption=_["stream_2"].format(user),
                 reply_markup=InlineKeyboardMarkup(button),
@@ -336,7 +336,7 @@ async def del_back_playlist(client, CallbackQuery, _):
                 button = stream_markup(_, chat_id)
                 img = await get_thumb(videoid, user_id)
                 run = await CallbackQuery.message.reply_photo(
-                    photo=img,
+                    animation=img,
                     caption=_["stream_1"].format(
                         f"https://t.me/{app.username}?start=info_{videoid}",
                         title[:23],
