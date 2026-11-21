@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# The provider and Telegram bot run inside this one Railway service.
-export YOUTUBE_POT_BASE_URL="http://127.0.0.1:4416"
-# Temporary diagnostics: confirms whether yt-dlp discovers bgutil and mints GVS tokens.
+# Run the bgutil HTTP provider beside the bot in the same Railway container.
+# The plugin auto-detects the default localhost:4416 endpoint; do not inject
+# a base_url extractor argument for the default endpoint.
 export YOUTUBE_DEBUG="${YOUTUBE_DEBUG:-1}"
 
 node /opt/bgutil-provider/build/main.js --host 127.0.0.1 --port 4416 &
@@ -15,11 +15,24 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-sleep 2
-if ! kill -0 "$POT_PID" 2>/dev/null; then
-    echo "[STARTUP ERROR] YouTube PO-token provider did not start."
+# Wait for the provider's actual HTTP readiness, not merely its process.
+POT_READY=0
+for attempt in $(seq 1 20); do
+    if ! kill -0 "$POT_PID" 2>/dev/null; then
+        echo "[STARTUP ERROR] YouTube PO-token provider exited during startup."
+        exit 1
+    fi
+    if curl --silent --show-error --fail http://127.0.0.1:4416/ping >/dev/null 2>&1; then
+        POT_READY=1
+        break
+    fi
+    sleep 1
+done
+
+if [ "$POT_READY" -ne 1 ]; then
+    echo "[STARTUP ERROR] YouTube PO-token provider did not become ready at 127.0.0.1:4416."
     exit 1
 fi
 
-echo "[STARTUP] YouTube PO-token provider is running on 127.0.0.1:4416"
+echo "[STARTUP] YouTube PO-token provider HTTP health check passed on 127.0.0.1:4416"
 python3 -m AppleMusicBot
