@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
 
-# Node.js 22 is required by the bundled bgutil PO-token provider.
+# Node.js 22 is used by yt-dlp's EJS JavaScript challenge solver.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg git curl ca-certificates gnupg build-essential \
     libglib2.0-0 libgl1 libsm6 libxext6 libxrender1 libgomp1 \
@@ -26,8 +26,7 @@ RUN pip3 install --upgrade pip wheel \
 RUN python -c "import sys; print('Python:', sys.version)" \
     && python -c "import PIL; print('Pillow: OK')" \
     && ffmpeg -filters >/dev/null \
-    && node --version \
-    
+    && node --version
 
 COPY . .
 RUN mkdir -p /app/downloads/editor /app/cache
