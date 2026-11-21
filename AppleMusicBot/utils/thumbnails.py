@@ -1,5 +1,7 @@
 import os
 import re
+import math
+import random
 from pathlib import Path
 
 import aiohttp
@@ -78,9 +80,53 @@ async def _avatar(user_id):
     return None
 
 
+def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
+    base = ImageOps.fit(cover, (1280, 720)).convert("RGB")
+    base = base.filter(ImageFilter.GaussianBlur(34))
+    base = ImageEnhance.Brightness(base).enhance(0.28)
+    canvas = base.convert("RGBA")
+    tint = Image.new("RGBA", canvas.size, (*palette[0], 105))
+    canvas.alpha_composite(tint)
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    # Neon equalizer columns and floating particles.
+    for x in range(28, 1255, 28):
+        height = 18 + int((0.5 + 0.5 * math.sin((x / 47) + frame_no * 0.7)) * 62)
+        draw.rounded_rectangle((x, 690-height, x+8, 690), radius=4,
+                               fill=(*palette[(x // 28) % len(palette)], 175))
+    for i in range(34):
+        x = (i * 137 + frame_no * (7 + i % 5)) % 1280
+        y = (i * 83 + frame_no * 11) % 720
+        draw.ellipse((x, y, x+3, y+3), fill=(*palette[i % len(palette)], 190))
+
+    # Central video cover and animated rainbow/neon ring.
+    cx, cy, radius = 640, 342, 218
+    for width in (20, 12, 5):
+        bbox = (cx-radius-width, cy-radius-width, cx+radius+width, cy+radius+width)
+        draw.ellipse(bbox, outline=(*palette[(frame_no + width//5) % len(palette)], 170), width=width)
+    _circle(canvas, cover, cx-radius+8, cy-radius+8, (radius-8)*2,
+            ring=(255, 255, 255, 245), border=5)
+
+    # Requester's DP overlaps the lower-right edge of the large circle.
+    _circle(canvas, avatar or cover, 790, 458, 112,
+            ring=(*palette[(frame_no + 2) % len(palette)], 255), border=7)
+
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    _rainbow_text(draw, bot_name, 58, _font(48, True))
+    draw.text((640, 612), "NOW PLAYING", font=_font(25, True), anchor="mm",
+              fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 230))
+    short_title = title if len(title) <= 46 else title[:43].rstrip() + "..."
+    draw.text((640, 650), short_title, font=_font(24, True), anchor="mm",
+              fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 230))
+    draw.text((640, 696), "POWERED BY GOVIND-BOTS", font=_font(19, True),
+              anchor="ms", fill=(*palette[(frame_no + 1) % len(palette)], 255),
+              stroke_width=2, stroke_fill=(0, 0, 0, 230))
+    return canvas.convert("RGB")
+
+
 async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
-    """Build the branded anime-style Now Playing thumbnail."""
-    output = CACHE / f"{videoid}_{user_id}_v4.png"
+    """Create a randomly themed animated Now Playing GIF."""
+    output = CACHE / f"{videoid}_{user_id}_v5.gif"
     if output.is_file():
         return str(output)
 
@@ -90,67 +136,36 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
             search = VideosSearch(f"https://www.youtube.com/watch?v={videoid}", limit=1)
             items = (await search.next()).get("result", [])
             item = items[0] if items else {}
-        title = re.sub(
-            r"\s+",
-            " ",
-            track_title or item.get("title", "Unknown Track"),
-        ).strip()
+        title = re.sub(r"\\s+", " ", track_title or item.get("title", "Unknown Track")).strip()
         thumb_url = thumbnail_url or item.get("thumbnails", [{}])[0].get("url", "")
         if not thumb_url:
             return YOUTUBE_IMG_URL
 
         cover_path = CACHE / f"cover_{videoid}.jpg"
         await _download(thumb_url.split("?")[0], cover_path)
-        cover = Image.open(cover_path).convert("RGB")
+        with Image.open(cover_path) as source:
+            cover = source.convert("RGB")
 
-        canvas = None
-        if TEMPLATE.is_file():
-            try:
-                with Image.open(TEMPLATE) as template_image:
-                    template_image.load()
-                    canvas = ImageOps.fit(
-                        template_image.convert("RGBA"), (1280, 720),
-                        method=Image.Resampling.LANCZOS
-                    )
-            except (OSError, ValueError) as template_error:
-                LOGGER(__name__).warning(
-                    "Invalid Now Playing template %s; using generated background: %s",
-                    TEMPLATE, template_error
-                )
-
-        if canvas is None:
-            # A missing/corrupt optional template must never break song thumbnails.
-            background = ImageOps.fit(cover, (1280, 720)).convert("RGB")
-            background = background.filter(ImageFilter.GaussianBlur(30))
-            background = ImageEnhance.Brightness(background).enhance(0.38)
-            canvas = background.convert("RGBA")
-            overlay = Image.new("RGBA", canvas.size, (12, 10, 24, 105))
-            canvas.alpha_composite(overlay)
-
-        # Main circle: video/song cover. Small circle: requester Telegram DP.
-        _circle(canvas, cover, 470, 145, 352, ring=(255, 255, 255, 255), border=5)
         avatar = await _avatar(user_id)
-        _circle(canvas, avatar or cover, 712, 426, 104,
-                ring=(70, 245, 155, 255), border=5)
-
-        draw = ImageDraw.Draw(canvas)
         bot = getattr(app, "me", None)
-        bot_name = (
-            getattr(bot, "first_name", None)
-            or getattr(app, "name", None)
-            or "ADISHA MUSIC"
-        ).upper()[:26]
-        _rainbow_text(draw, bot_name, 58, _font(46, True))
-        draw.text((640, 582), "NOW PLAYING", font=_font(22, True), anchor="mm",
-                  fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 230))
-        short_title = title if len(title) <= 44 else title[:41].rstrip() + "..."
-        draw.text((640, 620), short_title, font=_font(24, True), anchor="mm",
-                  fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 230))
-        draw.text((640, 684), "POWERED BY GOVIND-BOTS", font=_font(19, True),
-                  anchor="mm", fill=(255, 205, 225, 255),
-                  stroke_width=2, stroke_fill=(0, 0, 0, 230))
-
-        canvas.convert("RGB").save(output, "PNG", optimize=True)
+        bot_name = (getattr(bot, "first_name", None) or getattr(app, "name", None)
+                    or "ADISHA MUSIC").upper()[:26]
+        themes = [
+            [(255, 35, 75), (255, 125, 25), (255, 220, 65), (255, 70, 150)],
+            [(170, 55, 255), (255, 45, 210), (75, 115, 255), (40, 225, 255)],
+            [(0, 190, 255), (40, 255, 210), (90, 130, 255), (210, 80, 255)],
+            [(255, 50, 170), (255, 130, 45), (110, 255, 90), (60, 190, 255)],
+            [(255, 70, 70), (255, 210, 45), (70, 255, 150), (70, 150, 255)],
+        ]
+        palette = random.choice(themes)
+        frames = [
+            _animated_frame(cover, avatar, title, bot_name, palette, index)
+            for index in range(8)
+        ]
+        frames[0].save(
+            output, save_all=True, append_images=frames[1:],
+            duration=110, loop=0, optimize=True, disposal=2
+        )
         return str(output)
     except Exception as exc:
         LOGGER(__name__).exception("Now Playing thumbnail generation failed for %s: %s", videoid, exc)
