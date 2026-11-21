@@ -2,6 +2,7 @@ import os
 import re
 import math
 import random
+import colorsys
 from pathlib import Path
 
 import aiohttp
@@ -184,7 +185,7 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
                            outline=(*palette[frame_no % len(palette)], 220), width=4)
 
     # Animated neon orbit around the YouTube artwork
-    cx, cy, radius = 335, 350, 190
+    cx, cy, radius = 640, 310, 222
     pulse = int(7 + 7 * math.sin(frame_no * 0.8))
     for j, width in enumerate((16, 9, 4)):
         col = palette[(frame_no + j) % len(palette)]
@@ -192,29 +193,31 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
                       cx+radius+pulse+j*5, cy+radius+pulse+j*5),
                      outline=(*col, 125 + j*30), width=width)
 
-    _circle(canvas, cover, 155, 170, 360,
+    _circle(canvas, cover, 421, 91, 438,
             ring=(*palette[(frame_no+1) % len(palette)], 255), border=8)
 
-    # Anime mascot is generated in memory and gently bobs between GIF frames.
-    mascot = _make_anime_girl(440, palette[(frame_no+2) % len(palette)], frame_no)
-    canvas.alpha_composite(mascot, (805, 180))
+    # Twin anime mascots frame the central video artwork.
+    girl = _make_anime_girl(430, palette[(frame_no+2) % len(palette)], frame_no)
+    left_girl = girl.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    canvas.alpha_composite(left_girl, (-35, 145))
+    canvas.alpha_composite(girl, (885, 145))
 
     draw = ImageDraw.Draw(canvas, "RGBA")
-    # Header
-    draw.rounded_rectangle((585, 65, 1185, 145), radius=24,
-                           fill=(4, 5, 18, 225),
-                           outline=(*palette[frame_no % len(palette)], 235), width=3)
+    # Clear bot branding at the top center.
+    draw.rounded_rectangle((405, 12, 875, 70), radius=22,
+                           fill=(2, 4, 18, 238),
+                           outline=(*palette[frame_no % len(palette)], 245), width=3)
     brand = bot_name or "ADISHA MUSIC"
-    brand_font = _fit_text(draw, brand, 550, 39, True, 24)
-    draw.text((885, 105), brand, font=brand_font, anchor="mm",
+    brand_font = _fit_text(draw, brand, 425, 31, True, 20)
+    draw.text((640, 41), brand, font=brand_font, anchor="mm",
               fill=(255, 255, 255, 255), stroke_width=2,
               stroke_fill=(0, 0, 0, 255))
 
     # Clear title area with adaptive font size and two-line wrapping.
-    draw.rounded_rectangle((565, 420, 1190, 585), radius=25,
-                           fill=(4, 5, 18, 235),
-                           outline=(*palette[(frame_no+2) % len(palette)], 230), width=3)
-    draw.text((600, 450), "♫  NOW PLAYING", font=_font(23, True),
+    draw.rounded_rectangle((340, 555, 940, 625), radius=22,
+                           fill=(2, 3, 15, 240),
+                           outline=(*palette[(frame_no+2) % len(palette)], 240), width=3)
+    draw.text((640, 572), "♫  NOW PLAYING", font=_font(18, True), anchor="mm",
               fill=(*palette[(frame_no+1) % len(palette)], 255),
               stroke_width=1, stroke_fill=(0, 0, 0, 255))
 
@@ -235,7 +238,7 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
         lines[-1] = lines[-1].rstrip(" .") + "…"
     if not lines:
         lines = ["Unknown Track"]
-    title_font = _fit_text(draw, max(lines, key=len), 555, 31, True, 20)
+    title_font = _fit_text(draw, max(lines, key=len), 540, 23, True, 16)
     if len(lines) == 1:
         draw.text((600, 510), lines[0], font=title_font, fill=(255, 255, 255, 255),
                   stroke_width=2, stroke_fill=(0, 0, 0, 255))
@@ -245,18 +248,18 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
         draw.text((600, 535), lines[1], font=title_font, fill=(255, 255, 255, 255),
                   stroke_width=2, stroke_fill=(0, 0, 0, 255))
 
-    # GitHub identity stays legible and fixed rather than rainbow-per-letter.
-    draw.text((600, 605), GITHUB_NAME, font=_font(23, True),
-              fill=(255, 255, 255, 255), stroke_width=2,
-              stroke_fill=(0, 0, 0, 255))
-    draw.text((600, 634), GITHUB_URL, font=_font(16, False),
-              fill=(205, 215, 245, 255), stroke_width=1,
-              stroke_fill=(0, 0, 0, 255))
+    # GitHub identity in a clean footer.
+    draw.rounded_rectangle((365, 646, 915, 705), radius=18,
+                           fill=(2, 3, 15, 240),
+                           outline=(*palette[(frame_no+3) % len(palette)], 235), width=2)
+    draw.text((640, 663), GITHUB_NAME, font=_font(19, True), anchor="mm",
+              fill=(255, 255, 255, 255), stroke_width=1, stroke_fill=(0, 0, 0, 255))
+    draw.text((640, 688), GITHUB_URL, font=_font(13, False), anchor="mm",
+              fill=(210, 225, 255, 255), stroke_width=1, stroke_fill=(0, 0, 0, 255))
 
-    # User profile badge, if Telegram can provide it.
-    if avatar is not None:
-        _circle(canvas, avatar, 65, 62, 74,
-                ring=(*palette[(frame_no+3) % len(palette)], 255), border=4)
+    # Small user DP overlaps the lower-right edge of the big YouTube cover.
+    _circle(canvas, avatar or cover, 735, 326, 150,
+            ring=(*palette[(frame_no+3) % len(palette)], 255), border=6)
 
     # Safe-width animated equalizer bars (no rounded-rectangle radius overflow).
     draw = ImageDraw.Draw(canvas, "RGBA")
@@ -325,8 +328,16 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
             or "ADISHA MUSIC"
         ).upper()[:28]
 
-        palette = random.choice(THEMES)
-        frame_count = 12
+        # 8 colour families x 10 hue rotations = 80 random design identities.
+        style_id = random.randrange(80)
+        base = THEMES[style_id % len(THEMES)]
+        shift = (style_id // len(THEMES)) * 36
+        palette = []
+        for color in base:
+            h, s, v = colorsys.rgb_to_hsv(*(ch / 255 for ch in color))
+            rgb = colorsys.hsv_to_rgb((h + shift / 360) % 1, s, v)
+            palette.append(tuple(int(ch * 255) for ch in rgb))
+        frame_count = 16
         frames = [
             _animated_frame(cover, avatar, title, bot_name, palette, index)
             for index in range(frame_count)
@@ -337,7 +348,7 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
             format="GIF",
             save_all=True,
             append_images=frames[1:],
-            duration=105,
+            duration=90,
             loop=0,
             optimize=False,
             disposal=2,
