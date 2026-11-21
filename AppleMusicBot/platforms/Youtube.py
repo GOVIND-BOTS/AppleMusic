@@ -145,14 +145,25 @@ class YouTubeAPI:
             "js_runtimes": {"node": {}},
         }
 
-        # YouTube now requires video-bound PO tokens for many GVS formats.
-        # Railway should point this to a private bgutil provider service.
-        pot_base_url = os.getenv("YOUTUBE_POT_BASE_URL", "").strip()
+        # Use the client for which the configured bgutil provider is intended
+        # to mint GVS tokens. Mixing mweb/tv/web_safari in one profile can make
+        # yt-dlp select a format URL from a different client than expected.
+        pot_base_url = os.getenv(
+            "YOUTUBE_POT_BASE_URL", "http://127.0.0.1:4416"
+        ).strip()
         if pot_base_url:
             options["extractor_args"] = {
-                "youtube": {"player_client": ["mweb", "tv", "web_safari"]},
+                "youtube": {
+                    "player_client": ["mweb"],
+                    "pot_trace": ["true"],
+                },
                 "youtubepot-bgutilhttp": {"base_url": pot_base_url},
             }
+
+        # Turn on detailed yt-dlp diagnostics only when explicitly requested.
+        # This exposes provider/token generation status without noisy logs by default.
+        if os.getenv("YOUTUBE_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}:
+            options.update({"verbose": True, "quiet": False, "no_warnings": False})
 
         # Invalid or expired optional cookies must not disable YouTube playback.
         try:
@@ -166,16 +177,24 @@ class YouTubeAPI:
 
     @classmethod
     def _retry_profiles(cls, options):
-        """Build ordered yt-dlp profiles for PO-token/client fallback."""
+        """Build isolated YouTube player-client profiles with POT diagnostics."""
         base = dict(options or {})
-        profiles = [base]
-        pot_base_url = os.getenv("YOUTUBE_POT_BASE_URL", "").strip()
+        pot_base_url = os.getenv(
+            "YOUTUBE_POT_BASE_URL", "http://127.0.0.1:4416"
+        ).strip()
 
-        def make_profile(clients, disable_innertube=False):
+        def profile_for(clients=None, disable_innertube=False):
             profile = dict(base)
             extractor_args = dict(profile.get("extractor_args") or {})
             youtube_args = dict(extractor_args.get("youtube") or {})
-            youtube_args["player_client"] = list(clients)
+
+            if clients:
+                youtube_args["player_client"] = list(clients)
+            else:
+                # Let the current yt-dlp release choose its maintained defaults.
+                youtube_args.pop("player_client", None)
+
+            youtube_args["pot_trace"] = ["true"]
             extractor_args["youtube"] = youtube_args
 
             if pot_base_url:
@@ -185,23 +204,29 @@ class YouTubeAPI:
                 provider_args["base_url"] = pot_base_url
                 if disable_innertube:
                     provider_args["disable_innertube"] = "1"
+                else:
+                    provider_args.pop("disable_innertube", None)
                 extractor_args["youtubepot-bgutilhttp"] = provider_args
 
             profile["extractor_args"] = extractor_args
             return profile
 
-        # mweb is the recommended client when a PO-token provider is present.
-        profiles.append(make_profile(["mweb"]))
-        # web_safari can expose HLS formats when the normal GVS route is blocked.
-        profiles.append(make_profile(["web_safari"], disable_innertube=True))
+        # First choice: mweb with a video-bound GVS token from bgutil.
+        profiles = [profile_for(["mweb"])]
+        # Legacy provider mode can help when the Innertube flow is the issue.
+        profiles.append(profile_for(["mweb"], disable_innertube=True))
+        # Fall back to yt-dlp's maintained client defaults, then no-POT clients.
+        profiles.append(profile_for())
+        profiles.append(profile_for(["tv"]))
+        profiles.append(profile_for(["android_vr"]))
 
         unique = []
         seen = set()
-        for profile in profiles:
-            marker = repr(profile.get("extractor_args", {}))
+        for item in profiles:
+            marker = repr(item.get("extractor_args", {}))
             if marker not in seen:
                 seen.add(marker)
-                unique.append(profile)
+                unique.append(item)
         return unique
 
     @classmethod
