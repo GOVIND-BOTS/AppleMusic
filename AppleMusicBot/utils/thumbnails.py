@@ -91,7 +91,7 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no, template=
     draw = ImageDraw.Draw(canvas, "RGBA")
 
     # Animated neon glow around the template's large video circle.
-    cx, cy, radius = 646, 320, 197
+    cx, cy, radius = 640, 360, 197
     for width in (18, 11, 5):
         color = palette[(frame_no + width // 5) % len(palette)]
         draw.ellipse((cx-radius-width, cy-radius-width, cx+radius+width, cy+radius+width),
