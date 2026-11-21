@@ -16,14 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ffmpeg -version && ffprobe -version && node --version && npm --version \
     && rm -rf /var/lib/apt/lists/*
 
-# Build the official PO-token provider into this same image.
-RUN git clone --depth 1 --branch 2.0.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /tmp/bgutil-ytdlp-pot-provider \
-    && cd /tmp/bgutil-ytdlp-pot-provider/server \
-    && npm ci && npx tsc && npm prune --omit=dev \
-    && mkdir -p /opt/bgutil-provider \
-    && cp -a . /opt/bgutil-provider/ \
-    && rm -rf /tmp/bgutil-ytdlp-pot-provider
-
+# Node.js is used by yt-dlp's EJS JavaScript challenge solver.
 WORKDIR /app
 COPY requirements.txt .
 RUN pip3 install --upgrade pip wheel \
@@ -34,7 +27,7 @@ RUN python -c "import sys; print('Python:', sys.version)" \
     && python -c "import PIL; print('Pillow: OK')" \
     && ffmpeg -filters >/dev/null \
     && node --version \
-    && test -f /opt/bgutil-provider/build/main.js
+    
 
 COPY . .
 RUN mkdir -p /app/downloads/editor /app/cache
