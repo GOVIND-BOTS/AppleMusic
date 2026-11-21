@@ -80,53 +80,50 @@ async def _avatar(user_id):
     return None
 
 
-def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
-    base = ImageOps.fit(cover, (1280, 720)).convert("RGB")
-    base = base.filter(ImageFilter.GaussianBlur(34))
-    base = ImageEnhance.Brightness(base).enhance(0.28)
-    canvas = base.convert("RGBA")
-    tint = Image.new("RGBA", canvas.size, (*palette[0], 105))
-    canvas.alpha_composite(tint)
+def _animated_frame(cover, avatar, title, bot_name, palette, frame_no, template=None):
+    if template is not None:
+        canvas = template.copy().convert("RGBA")
+    else:
+        base = ImageOps.fit(cover, (1280, 720)).convert("RGB")
+        base = ImageEnhance.Brightness(base.filter(ImageFilter.GaussianBlur(34))).enhance(0.28)
+        canvas = base.convert("RGBA")
+        canvas.alpha_composite(Image.new("RGBA", canvas.size, (*palette[0], 105)))
     draw = ImageDraw.Draw(canvas, "RGBA")
 
-    # Neon equalizer columns and floating particles.
-    for x in range(28, 1255, 28):
-        height = 18 + int((0.5 + 0.5 * math.sin((x / 47) + frame_no * 0.7)) * 62)
-        draw.rounded_rectangle((x, 690-height, x+8, 690), radius=4,
-                               fill=(*palette[(x // 28) % len(palette)], 175))
-    for i in range(34):
-        x = (i * 137 + frame_no * (7 + i % 5)) % 1280
-        y = (i * 83 + frame_no * 11) % 720
-        draw.ellipse((x, y, x+3, y+3), fill=(*palette[i % len(palette)], 190))
+    # Animated neon glow around the template's large video circle.
+    cx, cy, radius = 646, 320, 197
+    for width in (18, 11, 5):
+        color = palette[(frame_no + width // 5) % len(palette)]
+        draw.ellipse((cx-radius-width, cy-radius-width, cx+radius+width, cy+radius+width),
+                     outline=(*color, 100 + (frame_no % 3) * 45), width=width)
 
-    # Central video cover and animated rainbow/neon ring.
-    cx, cy, radius = 640, 342, 218
-    for width in (20, 12, 5):
-        bbox = (cx-radius-width, cy-radius-width, cx+radius+width, cy+radius+width)
-        draw.ellipse(bbox, outline=(*palette[(frame_no + width//5) % len(palette)], 170), width=width)
-    _circle(canvas, cover, cx-radius+8, cy-radius+8, (radius-8)*2,
-            ring=(255, 255, 255, 245), border=5)
+    # Animated equalizer accents along the lower edge.
+    for x in range(22, 1258, 25):
+        height = 10 + int((0.5 + 0.5 * math.sin(x / 43 + frame_no * 0.72)) * 32)
+        color = palette[(x // 25 + frame_no) % len(palette)]
+        draw.rounded_rectangle((x, 713-height, x+7, 713), radius=3, fill=(*color, 190))
 
-    # Requester's DP overlaps the lower-right edge of the large circle.
-    _circle(canvas, avatar or cover, 790, 458, 112,
-            ring=(*palette[(frame_no + 2) % len(palette)], 255), border=7)
+    # The large hole in the supplied anime frame is the video/song cover.
+    _circle(canvas, cover, 462, 136, 368, ring=(255, 255, 255, 245), border=3)
+    # The small overlapping hole is the requesting user's Telegram profile photo.
+    _circle(canvas, avatar or cover, 712, 427, 104,
+            ring=(*palette[(frame_no + 2) % len(palette)], 255), border=6)
 
     draw = ImageDraw.Draw(canvas, "RGBA")
-    _rainbow_text(draw, bot_name, 58, _font(48, True))
-    draw.text((640, 612), "NOW PLAYING", font=_font(25, True), anchor="mm",
+    _rainbow_text(draw, bot_name, 58, _font(43, True))
+    draw.text((640, 606), "NOW PLAYING", font=_font(23, True), anchor="mm",
               fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 230))
-    short_title = title if len(title) <= 46 else title[:43].rstrip() + "..."
-    draw.text((640, 650), short_title, font=_font(24, True), anchor="mm",
+    short_title = title if len(title) <= 44 else title[:41].rstrip() + "..."
+    draw.text((640, 641), short_title, font=_font(22, True), anchor="mm",
               fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(0, 0, 0, 230))
-    draw.text((640, 696), "POWERED BY GOVIND-BOTS", font=_font(19, True),
-              anchor="ms", fill=(*palette[(frame_no + 1) % len(palette)], 255),
+    draw.text((640, 686), "POWERED BY GOVIND-BOTS", font=_font(19, True),
+              anchor="mm", fill=(*palette[(frame_no + 1) % len(palette)], 255),
               stroke_width=2, stroke_fill=(0, 0, 0, 230))
     return canvas.convert("RGB")
 
-
 async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
     """Create a randomly themed animated Now Playing GIF."""
-    output = CACHE / f"{videoid}_{user_id}_v5.gif"
+    output = CACHE / f"{videoid}_{user_id}_v5_{random.randrange(1, 1_000_000_000)}.gif"
     if output.is_file():
         return str(output)
 
@@ -147,6 +144,20 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
             cover = source.convert("RGB")
 
         avatar = await _avatar(user_id)
+        template = None
+        if TEMPLATE.is_file():
+            try:
+                with Image.open(TEMPLATE) as source:
+                    source.load()
+                    template = ImageOps.fit(
+                        source.convert("RGBA"), (1280, 720),
+                        method=Image.Resampling.LANCZOS
+                    )
+            except (OSError, ValueError) as template_error:
+                LOGGER(__name__).warning(
+                    "Invalid anime thumbnail template %s; using fallback art: %s",
+                    TEMPLATE, template_error
+                )
         bot = getattr(app, "me", None)
         bot_name = (getattr(bot, "first_name", None) or getattr(app, "name", None)
                     or "ADISHA MUSIC").upper()[:26]
@@ -159,7 +170,7 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
         ]
         palette = random.choice(themes)
         frames = [
-            _animated_frame(cover, avatar, title, bot_name, palette, index)
+            _animated_frame(cover, avatar, title, bot_name, palette, index, template)
             for index in range(8)
         ]
         frames[0].save(
