@@ -157,7 +157,6 @@ class YouTubeAPI:
                     "player_client": ["mweb"],
                     "pot_trace": ["true"],
                 },
-                "youtubepot-bgutilhttp": {"base_url": [pot_base_url]},
             }
 
         # Turn on detailed yt-dlp diagnostics only when explicitly requested.
@@ -197,24 +196,11 @@ class YouTubeAPI:
             youtube_args["pot_trace"] = ["true"]
             extractor_args["youtube"] = youtube_args
 
-            if pot_base_url:
-                provider_args = dict(
-                    extractor_args.get("youtubepot-bgutilhttp") or {}
-                )
-                provider_args["base_url"] = [pot_base_url]
-                if disable_innertube:
-                    provider_args["disable_innertube"] = ["1"]
-                else:
-                    provider_args.pop("disable_innertube", None)
-                extractor_args["youtubepot-bgutilhttp"] = provider_args
-
             profile["extractor_args"] = extractor_args
             return profile
 
         # First choice: mweb with a video-bound GVS token from bgutil.
         profiles = [profile_for(["mweb"])]
-        # Legacy provider mode can help when the Innertube flow is the issue.
-        profiles.append(profile_for(["mweb"], disable_innertube=True))
         # Fall back to yt-dlp's maintained client defaults, then no-POT clients.
         profiles.append(profile_for())
         profiles.append(profile_for(["tv"]))
