@@ -4,6 +4,7 @@ import logging
 import binascii
 import os
 import re
+import shutil
 from pathlib import Path
 
 import yt_dlp
@@ -141,23 +142,19 @@ class YouTubeAPI:
             "retries": 3,
             "fragment_retries": 3,
             "socket_timeout": 30,
-            "format": "bestaudio/best",
-            "js_runtimes": {"node": {}},
+            "format": "bestaudio/best/18/best",
+            # yt-dlp's JavaScript challenge solver needs both the EJS remote
+            # component and an installed JS runtime. Node is installed by the
+            # project Dockerfile; detect it rather than assuming it exists.
+            "remote_components": ["ejs:github"],
+            "extractor_args": {"youtube": {"pot_trace": ["true"]}},
         }
-
-        # Use the client for which the configured bgutil provider is intended
-        # to mint GVS tokens. Mixing mweb/tv/web_safari in one profile can make
-        # yt-dlp select a format URL from a different client than expected.
-        pot_base_url = os.getenv(
-            "YOUTUBE_POT_BASE_URL", "http://127.0.0.1:4416"
-        ).strip()
-        if pot_base_url:
-            options["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["mweb"],
-                    "pot_trace": ["true"],
-                },
-            }
+        if shutil.which("node"):
+            options["js_runtimes"] = {"node": {}}
+        elif shutil.which("deno"):
+            options["js_runtimes"] = {"deno": {}}
+        elif shutil.which("bun"):
+            options["js_runtimes"] = {"bun": {}}
 
         # Turn on detailed yt-dlp diagnostics only when explicitly requested.
         # This exposes provider/token generation status without noisy logs by default.
@@ -178,11 +175,8 @@ class YouTubeAPI:
     def _retry_profiles(cls, options):
         """Build isolated YouTube player-client profiles with POT diagnostics."""
         base = dict(options or {})
-        pot_base_url = os.getenv(
-            "YOUTUBE_POT_BASE_URL", "http://127.0.0.1:4416"
-        ).strip()
 
-        def profile_for(clients=None, disable_innertube=False):
+        def profile_for(clients=None):
             profile = dict(base)
             extractor_args = dict(profile.get("extractor_args") or {})
             youtube_args = dict(extractor_args.get("youtube") or {})
@@ -199,12 +193,17 @@ class YouTubeAPI:
             profile["extractor_args"] = extractor_args
             return profile
 
-        # First choice: mweb with a video-bound GVS token from bgutil.
-        profiles = [profile_for(["mweb"])]
-        # Fall back to yt-dlp's maintained client defaults, then no-POT clients.
-        profiles.append(profile_for())
-        profiles.append(profile_for(["tv"]))
-        profiles.append(profile_for(["android_vr"]))
+        # Keep each player client isolated. A mixed client list can make
+        # yt-dlp choose a media URL whose client-specific PO token does not
+        # match the request that produced it. The bgutil plugin auto-detects
+        # its local HTTP provider at 127.0.0.1:4416.
+        profiles = [
+            profile_for(["mweb"]),
+            profile_for(["tv"]),
+            profile_for(["web"]),
+            profile_for(["android_vr"]),
+            profile_for(),  # yt-dlp maintained defaults as final fallback
+        ]
 
         unique = []
         seen = set()
@@ -382,7 +381,10 @@ class YouTubeAPI:
                 noplaylist=True, continuedl=True, nopart=False, overwrites=False,
             )
             if video:
-                options["format"] = "best[height<=720][ext=mp4]/best[height<=720]/best"
+                options["format"] = (
+                    "best[height<=720][ext=mp4]/"
+                    "best[height<=720]/18/best"
+                )
                 options["merge_output_format"] = "mp4"
             else:
                 options["format"] = "bestaudio/best"
