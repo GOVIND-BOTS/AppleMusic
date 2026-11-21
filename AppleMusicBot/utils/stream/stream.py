@@ -16,6 +16,16 @@ from AppleMusicBot.utils.stream.queue import put_queue, put_queue_index
 from AppleMusicBot.utils.thumbnails import get_thumb
 
 
+async def _send_now_playing(chat_id, image_path, caption, markup):
+    if str(image_path).lower().endswith(".gif"):
+        return await app.send_animation(
+            chat_id, animation=image_path, caption=caption, reply_markup=markup
+        )
+    return await app.send_photo(
+        chat_id, photo=image_path, caption=caption, reply_markup=markup
+    )
+
+
 async def stream(
     _,
     mystic,
@@ -100,17 +110,17 @@ async def stream(
                 )
                 img = await get_thumb(vidid, user_id, thumbnail, title)
                 button = stream_markup(_, chat_id)
-                run = await app.send_animation(
-                    original_chat_id,
-                    animation=img,
-                    caption=_["stream_1"].format(
-                        f"https://t.me/{app.username}?start=info_{vidid}",
-                        title[:23],
-                        duration_min,
-                        user_name,
-                    ),
-                    reply_markup=InlineKeyboardMarkup(button),
-                )
+                run = await _send_now_playing(
+                original_chat_id,
+                img,
+                _["stream_1"].format(
+                    f"https://t.me/{app.username}?start=info_{vidid}",
+                    title[:23],
+                    duration_min,
+                    user_name,
+                ),
+                InlineKeyboardMarkup(button),
+            )
                 db[chat_id][0]["mystic"] = run
                 db[chat_id][0]["markup"] = "stream"
         if count == 0:
@@ -186,16 +196,16 @@ async def stream(
             )
             img = await get_thumb(vidid, user_id, thumbnail, title)
             button = stream_markup(_, chat_id)
-            run = await app.send_animation(
+            run = await _send_now_playing(
                 original_chat_id,
-                animation=img,
-                caption=_["stream_1"].format(
+                img,
+                _["stream_1"].format(
                     f"https://t.me/{app.username}?start=info_{vidid}",
                     title[:23],
                     duration_min,
                     user_name,
                 ),
-                reply_markup=InlineKeyboardMarkup(button),
+                InlineKeyboardMarkup(button),
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "stream"
@@ -354,16 +364,16 @@ async def stream(
             )
             img = await get_thumb(vidid, user_id, thumbnail, title)
             button = stream_markup(_, chat_id)
-            run = await app.send_animation(
+            run = await _send_now_playing(
                 original_chat_id,
-                animation=img,
-                caption=_["stream_1"].format(
+                img,
+                _["stream_1"].format(
                     f"https://t.me/{app.username}?start=info_{vidid}",
                     title[:23],
                     duration_min,
                     user_name,
                 ),
-                reply_markup=InlineKeyboardMarkup(button),
+                InlineKeyboardMarkup(button),
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
