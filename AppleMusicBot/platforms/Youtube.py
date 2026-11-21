@@ -157,7 +157,7 @@ class YouTubeAPI:
                     "player_client": ["mweb"],
                     "pot_trace": ["true"],
                 },
-                "youtubepot-bgutilhttp": {"base_url": pot_base_url},
+                "youtubepot-bgutilhttp": {"base_url": [pot_base_url]},
             }
 
         # Turn on detailed yt-dlp diagnostics only when explicitly requested.
@@ -201,9 +201,9 @@ class YouTubeAPI:
                 provider_args = dict(
                     extractor_args.get("youtubepot-bgutilhttp") or {}
                 )
-                provider_args["base_url"] = pot_base_url
+                provider_args["base_url"] = [pot_base_url]
                 if disable_innertube:
-                    provider_args["disable_innertube"] = "1"
+                    provider_args["disable_innertube"] = ["1"]
                 else:
                     provider_args.pop("disable_innertube", None)
                 extractor_args["youtubepot-bgutilhttp"] = provider_args
