@@ -246,10 +246,10 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
                   stroke_width=2, stroke_fill=(0, 0, 0, 255))
 
     # GitHub identity stays legible and fixed rather than rainbow-per-letter.
-    draw.text((600, 620), GITHUB_NAME, font=_font(23, True),
+    draw.text((600, 605), GITHUB_NAME, font=_font(23, True),
               fill=(255, 255, 255, 255), stroke_width=2,
               stroke_fill=(0, 0, 0, 255))
-    draw.text((600, 650), GITHUB_URL, font=_font(16, False),
+    draw.text((600, 634), GITHUB_URL, font=_font(16, False),
               fill=(205, 215, 245, 255), stroke_width=1,
               stroke_fill=(0, 0, 0, 255))
 
@@ -261,7 +261,7 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no):
     # Safe-width animated equalizer bars (no rounded-rectangle radius overflow).
     draw = ImageDraw.Draw(canvas, "RGBA")
     for x in range(55, 1220, 20):
-        height = 7 + int((0.5 + 0.5 * math.sin(x/42 + frame_no*0.75)) * 25)
+        height = 4 + int((0.5 + 0.5 * math.sin(x/42 + frame_no*0.75)) * 10)
         color = palette[(x//20 + frame_no) % len(palette)]
         draw.rounded_rectangle((x, 674-height, x+13, 674),
                                radius=3, fill=(*color, 230))
