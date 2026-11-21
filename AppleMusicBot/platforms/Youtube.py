@@ -173,50 +173,21 @@ class YouTubeAPI:
 
     @classmethod
     def _retry_profiles(cls, options):
-        """Build isolated YouTube player-client profiles with POT diagnostics."""
-        base = dict(options or {})
+        """Use yt-dlp's maintained default clients.
 
-        def profile_for(clients=None):
-            profile = dict(base)
-            extractor_args = dict(profile.get("extractor_args") or {})
-            youtube_args = dict(extractor_args.get("youtube") or {})
-
-            if clients:
-                youtube_args["player_client"] = list(clients)
-            else:
-                # Let the current yt-dlp release choose its maintained defaults.
-                youtube_args.pop("player_client", None)
-
-            youtube_args["pot_trace"] = ["true"]
-            extractor_args["youtube"] = youtube_args
-
-            profile["extractor_args"] = extractor_args
-            return profile
-
-        # Keep each player client isolated. A mixed client list can make
-        # yt-dlp choose a media URL whose client-specific PO token does not
-        # match the request that produced it. The bgutil plugin auto-detects
-        # its local HTTP provider at 127.0.0.1:4416.
-        profiles = [
-            profile_for(["mweb"]),
-            # web_safari can expose HLS media URLs even when mweb/web are
-            # placed in YouTube's SABR-only experiment. HLS GVS requests
-            # currently do not require the same PO-token path.
-            profile_for(["web_safari"]),
-            profile_for(["tv"]),
-            profile_for(["web"]),
-            profile_for(["android_vr"]),
-            profile_for(),  # yt-dlp maintained defaults as final fallback
-        ]
-
-        unique = []
-        seen = set()
-        for item in profiles:
-            marker = repr(item.get("extractor_args", {}))
-            if marker not in seen:
-                seen.add(marker)
-                unique.append(item)
-        return unique
+        The bgutil provider has been implicated in GVS URLs that return 403
+        even after a PO token was generated. Do not force mweb/web_safari or
+        another client here; with valid cookies, yt-dlp can select its
+        appropriate default client (including tv_downgraded where supported).
+        """
+        profile = dict(options or {})
+        extractor_args = dict(profile.get("extractor_args") or {})
+        youtube_args = dict(extractor_args.get("youtube") or {})
+        youtube_args.pop("player_client", None)
+        youtube_args["pot_trace"] = ["true"]
+        extractor_args["youtube"] = youtube_args
+        profile["extractor_args"] = extractor_args
+        return [profile]
 
     @classmethod
     def _extract(cls, url, download=False, options=None):
@@ -243,8 +214,7 @@ class YouTubeAPI:
                 if not retryable or index == len(profiles):
                     raise
                 logger.warning(
-                    "YouTube attempt %s/%s failed; retrying with fallback "
-                    "player client (%s).",
+                    "YouTube default-client attempt %s/%s failed (%s).",
                     index, len(profiles), exc,
                 )
 
@@ -451,7 +421,7 @@ class YouTubeAPI:
                         raise
                     logger.warning(
                         "YouTube media download attempt %s/%s failed; "
-                        "trying the next PO-token/player-client profile: %s",
+                        "default YouTube client download failed: %s",
                         index, len(profiles), exc,
                     )
 
