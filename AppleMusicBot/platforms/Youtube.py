@@ -164,58 +164,79 @@ class YouTubeAPI:
         options.update(kwargs)
         return options
 
-    @staticmethod
-    def _extract(url, download=False, options=None):
-        """Extract YouTube data and retry with a configured PO-token provider."""
-        base_options = dict(options or {})
-        try:
-            with yt_dlp.YoutubeDL(base_options) as ydl:
-                return ydl.extract_info(url, download=download)
-        except yt_dlp.utils.DownloadError as exc:
-            error_text = str(exc).lower()
-            format_unavailable = (
-                "requested format is not available" in error_text
-                or "no video formats found" in error_text
-                or "only images are available" in error_text
-            )
-            if not format_unavailable:
-                raise
+    @classmethod
+    def _retry_profiles(cls, options):
+        """Build ordered yt-dlp profiles for PO-token/client fallback."""
+        base = dict(options or {})
+        profiles = [base]
+        pot_base_url = os.getenv("YOUTUBE_POT_BASE_URL", "").strip()
 
-            logger = logging.getLogger(__name__)
-            retry_options = dict(base_options)
-            retry_options["format"] = "bestaudio/best"
-            retry_options.pop("cookiefile", None)
-
-            # android_vr is no longer a reliable fallback. Prefer mweb with
-            # a fresh per-video PO token from the configured bgutil provider.
-            pot_base_url = os.getenv("YOUTUBE_POT_BASE_URL", "").strip()
-            extractor_args = dict(retry_options.get("extractor_args") or {})
+        def make_profile(clients, disable_innertube=False):
+            profile = dict(base)
+            extractor_args = dict(profile.get("extractor_args") or {})
             youtube_args = dict(extractor_args.get("youtube") or {})
-            if pot_base_url:
-                youtube_args["player_client"] = ["mweb", "tv", "web_safari"]
-                extractor_args["youtubepot-bgutilhttp"] = {
-                    "base_url": pot_base_url,
-                }
-                logger.warning(
-                    "YouTube returned no formats; retrying with mweb/tv/web_safari "
-                    "and the configured bgutil PO-token provider."
-                )
-            else:
-                youtube_args["player_client"] = ["tv", "web_safari"]
-                logger.warning(
-                    "YouTube returned no formats and YOUTUBE_POT_BASE_URL is unset; "
-                    "retrying with tv/web_safari only. Configure the private bgutil "
-                    "provider service for reliable format extraction."
-                )
+            youtube_args["player_client"] = list(clients)
             extractor_args["youtube"] = youtube_args
-            retry_options["extractor_args"] = extractor_args
 
+            if pot_base_url:
+                provider_args = dict(
+                    extractor_args.get("youtubepot-bgutilhttp") or {}
+                )
+                provider_args["base_url"] = pot_base_url
+                if disable_innertube:
+                    provider_args["disable_innertube"] = "1"
+                extractor_args["youtubepot-bgutilhttp"] = provider_args
+
+            profile["extractor_args"] = extractor_args
+            return profile
+
+        # mweb is the recommended client when a PO-token provider is present.
+        profiles.append(make_profile(["mweb"]))
+        # web_safari can expose HLS formats when the normal GVS route is blocked.
+        profiles.append(make_profile(["web_safari"], disable_innertube=True))
+
+        unique = []
+        seen = set()
+        for profile in profiles:
+            marker = repr(profile.get("extractor_args", {}))
+            if marker not in seen:
+                seen.add(marker)
+                unique.append(profile)
+        return unique
+
+    @classmethod
+    def _extract(cls, url, download=False, options=None):
+        """Extract/download YouTube data with client and PO-token fallbacks."""
+        logger = logging.getLogger(__name__)
+        profiles = cls._retry_profiles(options)
+        last_error = None
+
+        for index, profile in enumerate(profiles, start=1):
             try:
-                with yt_dlp.YoutubeDL(retry_options) as ydl:
+                with yt_dlp.YoutubeDL(profile) as ydl:
                     return ydl.extract_info(url, download=download)
-            except yt_dlp.utils.DownloadError as retry_exc:
-                logger.error("YouTube PO-token/client fallback failed: %s", retry_exc)
-                raise retry_exc
+            except yt_dlp.utils.DownloadError as exc:
+                last_error = exc
+                error_text = str(exc).lower()
+                retryable = (
+                    "403" in error_text
+                    or "forbidden" in error_text
+                    or "requested format is not available" in error_text
+                    or "no video formats found" in error_text
+                    or "only images are available" in error_text
+                    or "http error 429" in error_text
+                )
+                if not retryable or index == len(profiles):
+                    raise
+                logger.warning(
+                    "YouTube attempt %s/%s failed; retrying with fallback "
+                    "player client (%s).",
+                    index, len(profiles), exc,
+                )
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("YouTube extraction failed without an error response.")
 
     async def exists(self, link, videoid=None):
         if not link:
@@ -359,28 +380,67 @@ class YouTubeAPI:
                     "preferredcodec": "mp3",
                     "preferredquality": "192",
                 }]
-            with yt_dlp.YoutubeDL(options) as ydl:
-                info = ydl.extract_info(link, download=True)
-                if not info:
-                    raise ValueError("YouTube download returned no data.")
-                video_id = info.get("id")
-                if not video_id:
-                    raise ValueError("YouTube video ID missing.")
-                if video:
-                    path = Path(ydl.prepare_filename(info))
-                    if not path.exists():
-                        candidates = [
-                            p for p in self.download_dir.glob(f"{video_id}.*")
-                            if p.suffix.lower() not in (".part", ".ytdl")
-                        ]
-                        if not candidates:
-                            raise FileNotFoundError("Downloaded video file not found.")
-                        path = candidates[0]
-                else:
-                    path = self.download_dir / f"{video_id}.mp3"
-                if not path.is_file():
-                    raise FileNotFoundError(f"Downloaded file missing: {path}")
-                return str(path.resolve())
+            logger = logging.getLogger(__name__)
+            profiles = self._retry_profiles(options)
+            last_error = None
+
+            for index, profile in enumerate(profiles, start=1):
+                try:
+                    with yt_dlp.YoutubeDL(profile) as ydl:
+                        info = ydl.extract_info(link, download=True)
+                        if not info:
+                            raise ValueError("YouTube download returned no data.")
+
+                        video_id = info.get("id")
+                        if not video_id:
+                            raise ValueError("YouTube video ID missing.")
+
+                        if video:
+                            path = Path(ydl.prepare_filename(info))
+                            if not path.exists():
+                                candidates = [
+                                    p for p in self.download_dir.glob(f"{video_id}.*")
+                                    if p.suffix.lower() not in (".part", ".ytdl")
+                                ]
+                                if not candidates:
+                                    raise FileNotFoundError(
+                                        "Downloaded video file not found."
+                                    )
+                                # Prefer the merged MP4 when yt-dlp created one.
+                                mp4_files = [
+                                    p for p in candidates if p.suffix.lower() == ".mp4"
+                                ]
+                                path = mp4_files[0] if mp4_files else candidates[0]
+                        else:
+                            path = self.download_dir / f"{video_id}.mp3"
+
+                        if not path.is_file():
+                            raise FileNotFoundError(
+                                f"Downloaded file missing: {path}"
+                            )
+                        return str(path.resolve())
+
+                except yt_dlp.utils.DownloadError as exc:
+                    last_error = exc
+                    error_text = str(exc).lower()
+                    retryable = (
+                        "403" in error_text
+                        or "forbidden" in error_text
+                        or "requested format is not available" in error_text
+                        or "no video formats found" in error_text
+                        or "http error 429" in error_text
+                    )
+                    if not retryable or index == len(profiles):
+                        raise
+                    logger.warning(
+                        "YouTube media download attempt %s/%s failed; "
+                        "trying the next PO-token/player-client profile: %s",
+                        index, len(profiles), exc,
+                    )
+
+            if last_error:
+                raise last_error
+            raise RuntimeError("YouTube download failed without an error response.")
 
         file_path = await loop.run_in_executor(None, _download)
         return file_path, True
