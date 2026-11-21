@@ -146,7 +146,7 @@ class YouTubeAPI:
             # yt-dlp's JavaScript challenge solver needs both the EJS remote
             # component and an installed JS runtime. Node is installed by the
             # project Dockerfile; detect it rather than assuming it exists.
-            "remote_components": ["ejs:github"],
+            "remote_components": {"ejs:github"},
             "extractor_args": {"youtube": {"pot_trace": ["true"]}},
         }
         if shutil.which("node"):
