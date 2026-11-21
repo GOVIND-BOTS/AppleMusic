@@ -123,7 +123,7 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no, template=
 
 async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
     """Create a randomly themed animated Now Playing GIF."""
-    output = CACHE / f"{videoid}_{user_id}_v5_{random.randrange(1, 1_000_000_000)}.gif"
+    output = CACHE / f"{videoid}_{user_id}_v6_{random.randrange(1, 1_000_000_000)}.gif"
     if output.is_file():
         return str(output)
 
@@ -135,13 +135,28 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
             item = items[0] if items else {}
         title = re.sub(r"\s+", " ", track_title or item.get("title", "Unknown Track")).strip()
         thumb_url = thumbnail_url or item.get("thumbnails", [{}])[0].get("url", "")
-        if not thumb_url:
-            return YOUTUBE_IMG_URL
-
-        cover_path = CACHE / f"cover_{videoid}.jpg"
-        await _download(thumb_url.split("?")[0], cover_path)
-        with Image.open(cover_path) as source:
-            cover = source.convert("RGB")
+        cover = None
+        if thumb_url:
+            try:
+                cover_path = CACHE / f"cover_{videoid}.jpg"
+                await _download(thumb_url, cover_path)
+                with Image.open(cover_path) as source:
+                    source.load()
+                    cover = source.convert("RGB")
+            except Exception as cover_error:
+                LOGGER(__name__).warning(
+                    "Could not download YouTube cover for %s; creating a designed fallback: %s",
+                    videoid, cover_error
+                )
+        if cover is None:
+            cover = Image.new("RGB", (600, 600), (42, 18, 75))
+            cover_draw = ImageDraw.Draw(cover)
+            for y in range(600):
+                blend = y / 600
+                color = (int(35 + 150 * blend), int(10 + 35 * (1-blend)), int(95 + 125 * (1-blend)))
+                cover_draw.line((0, y, 600, y), fill=color)
+            cover_draw.ellipse((100, 100, 500, 500), outline=(255, 90, 210), width=18)
+            cover_draw.text((300, 300), "♪", fill="white", anchor="mm", font=_font(190, True))
 
         avatar = await _avatar(user_id)
         template = None
@@ -180,4 +195,27 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
         return str(output)
     except Exception as exc:
         LOGGER(__name__).exception("Now Playing thumbnail generation failed for %s: %s", videoid, exc)
-        return YOUTUBE_IMG_URL
+        # Last-resort animated artwork instead of silently reverting to the old static image.
+        try:
+            fallback = Image.new("RGB", (600, 600), (28, 12, 55))
+            fd = ImageDraw.Draw(fallback)
+            fd.ellipse((45, 45, 555, 555), outline=(255, 65, 190), width=28)
+            fd.text((300, 300), "♪", fill=(255, 255, 255), anchor="mm", font=_font(220, True))
+            palette = [(255, 45, 160), (90, 100, 255), (0, 220, 210), (255, 180, 40)]
+            template = None
+            if TEMPLATE.is_file():
+                try:
+                    with Image.open(TEMPLATE) as source:
+                        source.load()
+                        template = ImageOps.fit(source.convert("RGBA"), (1280, 720))
+                except Exception:
+                    pass
+            bot = getattr(app, "me", None)
+            bot_name = (getattr(bot, "first_name", None) or "ADISHA MUSIC").upper()[:26]
+            frames = [_animated_frame(fallback, None, track_title or "NOW PLAYING",
+                                      bot_name, palette, i, template) for i in range(8)]
+            frames[0].save(output, save_all=True, append_images=frames[1:],
+                           duration=110, loop=0, optimize=True, disposal=2)
+            return str(output)
+        except Exception:
+            return YOUTUBE_IMG_URL
