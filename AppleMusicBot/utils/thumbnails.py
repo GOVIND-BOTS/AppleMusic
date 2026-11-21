@@ -101,7 +101,7 @@ def _animated_frame(cover, avatar, title, bot_name, palette, frame_no, template=
     for x in range(22, 1258, 25):
         height = 10 + int((0.5 + 0.5 * math.sin(x / 43 + frame_no * 0.72)) * 32)
         color = palette[(x // 25 + frame_no) % len(palette)]
-        draw.rounded_rectangle((x, 713-height, x+7, 713), radius=3, fill=(*color, 190))
+        draw.rounded_rectangle((x, 713-height, x+10, 713), radius=2, fill=(*color, 190))
 
     # The large hole in the supplied anime frame is the video/song cover.
     _circle(canvas, cover, 462, 136, 368, ring=(255, 255, 255, 245), border=3)
@@ -162,6 +162,8 @@ async def get_thumb(videoid, user_id, thumbnail_url=None, track_title=None):
         template = None
         if TEMPLATE.is_file():
             try:
+                with Image.open(TEMPLATE) as source:
+                    source.verify()
                 with Image.open(TEMPLATE) as source:
                     source.load()
                     template = ImageOps.fit(
