@@ -100,9 +100,9 @@ async def stream(
                 )
                 img = await get_thumb(vidid, user_id, thumbnail, title)
                 button = stream_markup(_, chat_id)
-                run = await app.send_photo(
+                run = await app.send_animation(
                     original_chat_id,
-                    photo=img,
+                    animation=img,
                     caption=_["stream_1"].format(
                         f"https://t.me/{app.username}?start=info_{vidid}",
                         title[:23],
@@ -186,9 +186,9 @@ async def stream(
             )
             img = await get_thumb(vidid, user_id, thumbnail, title)
             button = stream_markup(_, chat_id)
-            run = await app.send_photo(
+            run = await app.send_animation(
                 original_chat_id,
-                photo=img,
+                animation=img,
                 caption=_["stream_1"].format(
                     f"https://t.me/{app.username}?start=info_{vidid}",
                     title[:23],
@@ -354,9 +354,9 @@ async def stream(
             )
             img = await get_thumb(vidid, user_id, thumbnail, title)
             button = stream_markup(_, chat_id)
-            run = await app.send_photo(
+            run = await app.send_animation(
                 original_chat_id,
-                photo=img,
+                animation=img,
                 caption=_["stream_1"].format(
                     f"https://t.me/{app.username}?start=info_{vidid}",
                     title[:23],
