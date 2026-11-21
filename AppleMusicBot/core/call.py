@@ -460,9 +460,9 @@ class Call:
             img = await get_thumb(videoid, user_id)
             button = stream_markup(_, chat_id)
 
-            run = await app.send_photo(
+            run = await app.send_animation(
                 chat_id=original_chat_id,
-                photo=img,
+                animation=img,
                 caption=_["stream_1"].format(
                     f"https://t.me/{app.username}?start=info_{videoid}",
                     title[:23],
@@ -519,9 +519,9 @@ class Call:
 
             await mystic.delete()
 
-            run = await app.send_photo(
+            run = await app.send_animation(
                 chat_id=original_chat_id,
-                photo=img,
+                animation=img,
                 caption=_["stream_1"].format(
                     f"https://t.me/{app.username}?start=info_{videoid}",
                     title[:23],
