@@ -1,4 +1,5 @@
 import os
+import logging
 from random import randint
 from typing import Union
 
@@ -24,6 +25,25 @@ async def _send_now_playing(chat_id, image_path, caption, markup):
     return await app.send_photo(
         chat_id, photo=image_path, caption=caption, reply_markup=markup
     )
+
+
+async def _send_now_playing_safe(chat_id, image_path, caption, markup):
+    """Never interrupt an active audio stream because its artwork failed."""
+    try:
+        return await _send_now_playing(chat_id, image_path, caption, markup)
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Now-playing artwork send failed; sending text fallback."
+        )
+        try:
+            return await app.send_message(
+                chat_id, caption, reply_markup=markup, disable_web_page_preview=True
+            )
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Text now-playing fallback also failed."
+            )
+            return None
 
 
 async def stream(
@@ -110,7 +130,7 @@ async def stream(
                 )
                 img = await get_thumb(vidid, user_id, thumbnail, title)
                 button = stream_markup(_, chat_id)
-                run = await _send_now_playing(
+                run = await _send_now_playing_safe(
                 original_chat_id,
                 img,
                 _["stream_1"].format(
@@ -217,7 +237,7 @@ async def stream(
             )
             img = await get_thumb(vidid, user_id, thumbnail, title)
             button = stream_markup(_, chat_id)
-            run = await _send_now_playing(
+            run = await _send_now_playing_safe(
                 original_chat_id,
                 img,
                 _["stream_1"].format(
@@ -270,13 +290,14 @@ async def stream(
                 forceplay=forceplay,
             )
             button = stream_markup(_, chat_id)
-            run = await app.send_photo(
+            caption = _["stream_1"].format(
+                config.SUPPORT_CHAT, title[:23], duration_min, user_name
+            )
+            run = await _send_now_playing_safe(
                 original_chat_id,
-                photo=config.SOUNCLOUD_IMG_URL,
-                caption=_["stream_1"].format(
-                    config.SUPPORT_CHAT, title[:23], duration_min, user_name
-                ),
-                reply_markup=InlineKeyboardMarkup(button),
+                config.SOUNCLOUD_IMG_URL,
+                caption,
+                InlineKeyboardMarkup(button),
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
@@ -385,7 +406,7 @@ async def stream(
             )
             img = await get_thumb(vidid, user_id, thumbnail, title)
             button = stream_markup(_, chat_id)
-            run = await _send_now_playing(
+            run = await _send_now_playing_safe(
                 original_chat_id,
                 img,
                 _["stream_1"].format(
