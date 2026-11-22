@@ -43,6 +43,13 @@ class SoundAPI:
                 info = ydl.extract_info(url, download=True)
                 if not info:
                     raise ValueError("SoundCloud returned no track data")
+                # yt-dlp search extractors return a playlist wrapper, even
+                # for scsearch1:. Select its single requested result.
+                entries = info.get("entries") if isinstance(info, dict) else None
+                if entries:
+                    info = next((item for item in entries if item), None)
+                if not info:
+                    raise ValueError("No SoundCloud search result was available")
                 track_id = str(info.get("id") or "")
                 if not track_id:
                     raise ValueError("SoundCloud track ID is missing")
