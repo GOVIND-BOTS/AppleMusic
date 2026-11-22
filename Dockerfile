@@ -4,10 +4,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
+ENV CHROME_BIN=/usr/bin/chromium
 
 # Node.js 22 is used by yt-dlp's EJS JavaScript challenge solver.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg git curl ca-certificates gnupg build-essential \
+    ffmpeg git curl ca-certificates gnupg build-essential chromium \
     libglib2.0-0 libgl1 libsm6 libxext6 libxrender1 libgomp1 \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
