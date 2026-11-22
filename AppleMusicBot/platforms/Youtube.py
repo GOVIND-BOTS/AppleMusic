@@ -201,6 +201,28 @@ class YouTubeAPI:
 
         return [base, android_vr]
 
+    @staticmethod
+    def _retryable_error(exc):
+        # yt-dlp normally wraps network failures in DownloadError, but some
+        # networking backends can surface HTTPError directly. Handle both.
+        message = str(exc).lower()
+        return any(token in message for token in (
+            "403", "forbidden", "requested format is not available",
+            "no video formats found", "only images are available",
+            "http error 429", "too many requests",
+        ))
+
+    @staticmethod
+    def _error_label(exc):
+        message = str(exc).lower()
+        if "403" in message or "forbidden" in message:
+            return "HTTP 403 Forbidden"
+        if "429" in message or "too many requests" in message:
+            return "HTTP 429 Too Many Requests"
+        if "format" in message:
+            return "format unavailable"
+        return type(exc).__name__
+
     @classmethod
     def _extract(cls, url, download=False, options=None):
         """Extract/download YouTube data with client and PO-token fallbacks."""
@@ -212,22 +234,13 @@ class YouTubeAPI:
             try:
                 with yt_dlp.YoutubeDL(profile) as ydl:
                     return ydl.extract_info(url, download=download)
-            except yt_dlp.utils.DownloadError as exc:
+            except Exception as exc:
                 last_error = exc
-                error_text = str(exc).lower()
-                retryable = (
-                    "403" in error_text
-                    or "forbidden" in error_text
-                    or "requested format is not available" in error_text
-                    or "no video formats found" in error_text
-                    or "only images are available" in error_text
-                    or "http error 429" in error_text
-                )
-                if not retryable or index == len(profiles):
+                if not cls._retryable_error(exc) or index == len(profiles):
                     raise
                 logger.warning(
-                    "YouTube default-client attempt %s/%s failed (%s).",
-                    index, len(profiles), exc,
+                    "YouTube extraction profile %s/%s failed (%s); trying fallback.",
+                    index, len(profiles), cls._error_label(exc),
                 )
 
         if last_error:
@@ -419,22 +432,14 @@ class YouTubeAPI:
                             )
                         return str(path.resolve())
 
-                except yt_dlp.utils.DownloadError as exc:
+                except Exception as exc:
                     last_error = exc
-                    error_text = str(exc).lower()
-                    retryable = (
-                        "403" in error_text
-                        or "forbidden" in error_text
-                        or "requested format is not available" in error_text
-                        or "no video formats found" in error_text
-                        or "http error 429" in error_text
-                    )
-                    if not retryable or index == len(profiles):
+                    if not self._retryable_error(exc) or index == len(profiles):
                         raise
                     logger.warning(
-                        "YouTube media download attempt %s/%s failed; "
-                        "default YouTube client download failed: %s",
-                        index, len(profiles), exc,
+                        "YouTube media download profile %s/%s failed (%s); "
+                        "trying fallback.",
+                        index, len(profiles), self._error_label(exc),
                     )
 
             if last_error:
