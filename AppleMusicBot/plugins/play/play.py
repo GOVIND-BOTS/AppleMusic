@@ -258,6 +258,10 @@ async def play_commnd(
                     message.chat.id, streamtype="soundcloud", forceplay=fplay,
                 )
             except Exception as e:
+                LOGGER(__name__).exception(
+                    "Direct playback failed | streamtype=%s | chat_id=%s",
+                    streamtype, chat_id,
+                )
                 ex_type = type(e).__name__
                 err = e if ex_type == "AssistantErr" else _["general_2"].format(ex_type)
                 return await mystic.edit_text(err)
@@ -315,6 +319,9 @@ async def play_commnd(
                     message.chat.id, video=video, streamtype=streamtype, forceplay=fplay,
                 )
             except Exception as e:
+                LOGGER(__name__).exception(
+                    "SoundCloud playback failed | chat_id=%s", chat_id
+                )
                 ex_type = type(e).__name__
                 err = e if ex_type == "AssistantErr" else _["general_2"].format(ex_type)
                 return await mystic.edit_text(err)
