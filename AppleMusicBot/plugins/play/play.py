@@ -167,15 +167,21 @@ async def play_commnd(
                 img = details["thumb"]
                 cap = _["play_10"].format(details["title"], details["duration_min"])
         elif await Spotify.valid(url):
-            spotify = True
-            if not config.SPOTIFY_CLIENT_ID and not config.SPOTIFY_CLIENT_SECRET:
+            # Spotify supplies catalogue metadata; the actual playable stream is
+            # resolved through the configured YouTube extractor.
+            if not config.SPOTIFY_CLIENT_ID or not config.SPOTIFY_CLIENT_SECRET:
                 return await mystic.edit_text(
-                    "» Spotify is not supported yet.\n\nPlease try again later."
+                    "» Spotify link playback needs SPOTIFY_CLIENT_ID and "
+                    "SPOTIFY_CLIENT_SECRET in the bot environment."
                 )
             if "track" in url:
                 try:
-                    details, track_id = await Spotify.track(url)
-                except:
+                    metadata = await Spotify.track(url)
+                    if not metadata or not metadata.get("query"):
+                        raise ValueError("Spotify track metadata unavailable")
+                    details, track_id = await YouTube.track(metadata["query"])
+                except Exception as exc:
+                    LOGGER(__name__).exception("Spotify track resolution failed: %s", exc)
                     return await mystic.edit_text(_["play_3"])
                 streamtype = "youtube"
                 img = details["thumb"]
@@ -210,30 +216,28 @@ async def play_commnd(
             else:
                 return await mystic.edit_text(_["play_15"])
         elif await Apple.valid(url):
-            if "album" in url:
-                try:
-                    details, track_id = await Apple.track(url)
-                except:
-                    return await mystic.edit_text(_["play_3"])
-                streamtype = "youtube"
-                img = details["thumb"]
-                cap = _["play_10"].format(details["title"], details["duration_min"])
-            elif "playlist" in url:
-                spotify = True
-                try:
-                    details, plist_id = await Apple.playlist(url)
-                except:
-                    return await mystic.edit_text(_["play_3"])
-                streamtype = "playlist"
-                plist_type = "apple"
-                cap = _["play_12"].format(app.mention, message.from_user.mention)
-                img = url
-            else:
+            # Apple Music page metadata is resolved to a playable audio source.
+            try:
+                metadata = await Apple.track(url)
+                query = (metadata or {}).get("query") or (metadata or {}).get("title")
+                if not query or query == "Apple Music Track":
+                    raise ValueError("Apple Music did not expose track metadata")
+                details, track_id = await YouTube.track(query)
+            except Exception as exc:
+                LOGGER(__name__).exception("Apple Music track resolution failed: %s", exc)
                 return await mystic.edit_text(_["play_3"])
+            streamtype = "youtube"
+            img = details["thumb"]
+            cap = _["play_10"].format(details["title"], details["duration_min"])
         elif await Resso.valid(url):
             try:
-                details, track_id = await Resso.track(url)
-            except:
+                metadata = await Resso.track(url)
+                query = (metadata or {}).get("query") or (metadata or {}).get("title")
+                if not query or query == "Resso Track":
+                    raise ValueError("Resso did not expose track metadata")
+                details, track_id = await YouTube.track(query)
+            except Exception as exc:
+                LOGGER(__name__).exception("Resso track resolution failed: %s", exc)
                 return await mystic.edit_text(_["play_3"])
             streamtype = "youtube"
             img = details["thumb"]
