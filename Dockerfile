@@ -22,7 +22,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip3 install --upgrade pip wheel \
     && (pip3 uninstall -y motor pymongo || true) \
-    && pip3 install -r requirements.txt
+    && pip3 install -r requirements.txt \
+    && pip3 install --no-cache-dir --upgrade yt-dlp-getpot-wpc==1.1.2 \
+    && python -c "import yt_dlp; print('yt-dlp:', yt_dlp.version.__version__)" \
+    && python -c "import importlib.util; s=importlib.util.find_spec('yt_dlp_plugins.extractor.getpot_wpc'); assert s is not None, 'WPC yt-dlp plugin was not installed'; print('WPC plugin module:', s.origin)"
 
 RUN python -c "import sys; print('Python:', sys.version)" \
     && python -c "import PIL; print('Pillow: OK')" \
