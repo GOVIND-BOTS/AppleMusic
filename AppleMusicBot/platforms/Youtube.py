@@ -173,12 +173,11 @@ class YouTubeAPI:
 
     @classmethod
     def _retry_profiles(cls, options):
-        """Try yt-dlp defaults first, then a token-free Android VR client.
+        """Try default, WebPO/mweb with WPC, then token-free Android VR.
 
-        Some YouTube sessions expose SABR-only web formats. The default
-        extractor can then return a googlevideo URL that is rejected with 403.
-        android_vr does not require a GVS PO Token and is used as a clean
-        fallback without account cookies (which are not supported by it).
+        The WPC provider can mint video-bound GVS PO tokens for mweb. The
+        Android VR profile is kept as a final fallback and deliberately drops
+        account cookies because that client does not support them.
         """
         base = dict(options or {})
         extractor_args = dict(base.get("extractor_args") or {})
@@ -187,6 +186,27 @@ class YouTubeAPI:
         youtube_args["pot_trace"] = ["true"]
         extractor_args["youtube"] = youtube_args
         base["extractor_args"] = extractor_args
+
+        profiles = [base]
+        chromium = (
+            os.getenv("CHROME_BIN", "").strip()
+            or shutil.which("chromium")
+            or shutil.which("chromium-browser")
+            or shutil.which("google-chrome")
+        )
+
+        # The WPC provider is installed in requirements.txt. Only add this
+        # profile when the Docker image has a browser available for token minting.
+        if chromium:
+            mweb = dict(base)
+            mweb_args = dict(mweb.get("extractor_args") or {})
+            mweb_youtube = dict(mweb_args.get("youtube") or {})
+            mweb_youtube["player_client"] = ["mweb"]
+            mweb_youtube["pot_trace"] = ["true"]
+            mweb_args["youtube"] = mweb_youtube
+            mweb_args["youtubepot-wpc"] = {"browser_path": chromium}
+            mweb["extractor_args"] = mweb_args
+            profiles.append(mweb)
 
         android_vr = dict(base)
         android_vr.pop("cookiefile", None)
@@ -198,8 +218,9 @@ class YouTubeAPI:
         android_youtube_args["pot_trace"] = ["true"]
         android_extractor_args["youtube"] = android_youtube_args
         android_vr["extractor_args"] = android_extractor_args
+        profiles.append(android_vr)
 
-        return [base, android_vr]
+        return profiles
 
     @staticmethod
     def _retryable_error(exc):
