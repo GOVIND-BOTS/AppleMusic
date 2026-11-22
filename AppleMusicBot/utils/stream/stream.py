@@ -5,7 +5,7 @@ from typing import Union
 from pyrogram.types import InlineKeyboardMarkup
 
 import config
-from AppleMusicBot import Carbon, YouTube, app
+from AppleMusicBot import Carbon, SoundCloud, YouTube, app
 from AppleMusicBot.core.call import AppleBot
 from AppleMusicBot.misc import db
 from AppleMusicBot.utils.database import add_active_video_chat, is_active_chat
@@ -151,7 +151,28 @@ async def stream(
             file_path, direct = await YouTube.download(
                 vidid, mystic, videoid=True, video=status
             )
-        except:
+        except Exception as youtube_error:
+            # YouTube can temporarily rate-limit or deny Railway/VPS egress IPs.
+            # For audio requests, retry the same track title through SoundCloud
+            # instead of failing the user's /play command immediately.
+            if not video:
+                try:
+                    soundcloud_result, _ = await SoundCloud.download(
+                        f"scsearch1:{title}"
+                    )
+                    return await stream(
+                        _, mystic, user_id, soundcloud_result, chat_id,
+                        user_name, original_chat_id, video=None,
+                        streamtype="soundcloud", forceplay=forceplay,
+                    )
+                except Exception as soundcloud_error:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        "YouTube and SoundCloud playback fallback failed "
+                        "(%s / %s).",
+                        type(youtube_error).__name__,
+                        type(soundcloud_error).__name__,
+                    )
             raise AssistantErr(_["play_14"])
         if await is_active_chat(chat_id):
             await put_queue(
