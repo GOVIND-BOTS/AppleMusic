@@ -173,21 +173,33 @@ class YouTubeAPI:
 
     @classmethod
     def _retry_profiles(cls, options):
-        """Use yt-dlp's maintained default clients.
+        """Try yt-dlp defaults first, then a token-free Android VR client.
 
-        The bgutil provider has been implicated in GVS URLs that return 403
-        even after a PO token was generated. Do not force mweb/web_safari or
-        another client here; with valid cookies, yt-dlp can select its
-        appropriate default client (including tv_downgraded where supported).
+        Some YouTube sessions expose SABR-only web formats. The default
+        extractor can then return a googlevideo URL that is rejected with 403.
+        android_vr does not require a GVS PO Token and is used as a clean
+        fallback without account cookies (which are not supported by it).
         """
-        profile = dict(options or {})
-        extractor_args = dict(profile.get("extractor_args") or {})
+        base = dict(options or {})
+        extractor_args = dict(base.get("extractor_args") or {})
         youtube_args = dict(extractor_args.get("youtube") or {})
         youtube_args.pop("player_client", None)
         youtube_args["pot_trace"] = ["true"]
         extractor_args["youtube"] = youtube_args
-        profile["extractor_args"] = extractor_args
-        return [profile]
+        base["extractor_args"] = extractor_args
+
+        android_vr = dict(base)
+        android_vr.pop("cookiefile", None)
+        android_extractor_args = dict(android_vr.get("extractor_args") or {})
+        android_youtube_args = dict(
+            android_extractor_args.get("youtube") or {}
+        )
+        android_youtube_args["player_client"] = ["android_vr"]
+        android_youtube_args["pot_trace"] = ["true"]
+        android_extractor_args["youtube"] = android_youtube_args
+        android_vr["extractor_args"] = android_extractor_args
+
+        return [base, android_vr]
 
     @classmethod
     def _extract(cls, url, download=False, options=None):
